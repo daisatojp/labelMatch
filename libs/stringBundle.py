@@ -2,6 +2,7 @@
 # -*- coding: utf-8 -*-
 import re
 import os
+import os.path as osp
 import sys
 import locale
 from libs.ustr import ustr
@@ -22,9 +23,10 @@ class StringBundle:
     def __init__(self, create_key, localeStr):
         assert(create_key == StringBundle.__create_key), "StringBundle must be created using StringBundle.getBundle"
         self.idToMessage = {}
-        paths = self.__createLookupFallbackList(localeStr)
-        for path in paths:
-            self.__loadBundle(path)
+        self.__loadBundle(osp.join('resources', 'strings', 'strings.properties'))
+        # paths = self.__createLookupFallbackList(localeStr)
+        # for path in paths:
+        #     self.__loadBundle(path)
 
     @classmethod
     def getBundle(cls, localeStr=None):

@@ -3,11 +3,13 @@
 import argparse
 import codecs
 import distutils.spawn
-import os.path
+import os
+import os.path as osp
 import platform
 import re
 import sys
 import subprocess
+import json
 
 from functools import partial
 from collections import defaultdict
@@ -28,7 +30,7 @@ except ImportError:
     from PyQt4.QtCore import *
 
 from libs.combobox import ComboBox
-from libs.resources import *
+# from libs.resources import *
 from libs.constants import *
 from libs.utils import *
 from libs.settings import Settings
@@ -49,7 +51,7 @@ from libs.create_ml_io import JSON_EXT
 from libs.ustr import ustr
 from libs.hashableQListWidgetItem import HashableQListWidgetItem
 
-__appname__ = 'labelImg'
+__appname__ = 'PointMacher'
 
 
 class WindowMixin(object):
@@ -77,6 +79,9 @@ class MainWindow(QMainWindow, WindowMixin):
     def __init__(self, defaultFilename=None, defaultPrefdefClassFile=None, defaultSaveDir=None):
         super(MainWindow, self).__init__()
         self.setWindowTitle(__appname__)
+
+        # annotation file
+        self.matching = None
 
         # Load setting in the main thread
         self.settings = Settings()
@@ -118,59 +123,42 @@ class MainWindow(QMainWindow, WindowMixin):
         listLayout = QVBoxLayout()
         listLayout.setContentsMargins(0, 0, 0, 0)
 
-        # Create a widget for using default label
-        self.useDefaultLabelCheckbox = QCheckBox(getStr('useDefaultLabel'))
-        self.useDefaultLabelCheckbox.setChecked(False)
-        self.defaultLabelTextLine = QLineEdit()
-        useDefaultLabelQHBoxLayout = QHBoxLayout()
-        useDefaultLabelQHBoxLayout.addWidget(self.useDefaultLabelCheckbox)
-        useDefaultLabelQHBoxLayout.addWidget(self.defaultLabelTextLine)
-        useDefaultLabelContainer = QWidget()
-        useDefaultLabelContainer.setLayout(useDefaultLabelQHBoxLayout)
-
-        # Create a widget for edit and diffc button
-        self.diffcButton = QCheckBox(getStr('useDifficult'))
-        self.diffcButton.setChecked(False)
-        self.diffcButton.stateChanged.connect(self.btnstate)
-        self.editButton = QToolButton()
-        self.editButton.setToolButtonStyle(Qt.ToolButtonTextBesideIcon)
-
-        # Add some of widgets to listLayout
-        listLayout.addWidget(self.editButton)
-        listLayout.addWidget(self.diffcButton)
-        listLayout.addWidget(useDefaultLabelContainer)
-
         # Create and add combobox for showing unique labels in group
         self.comboBox = ComboBox(self)
         listLayout.addWidget(self.comboBox)
 
-        # Create and add a widget for showing current label items
-        self.labelList = QListWidget()
-        labelListContainer = QWidget()
-        labelListContainer.setLayout(listLayout)
-        self.labelList.itemActivated.connect(self.labelSelectionChanged)
-        self.labelList.itemSelectionChanged.connect(self.labelSelectionChanged)
-        self.labelList.itemDoubleClicked.connect(self.editLabel)
-        # Connect to itemChanged to detect checkbox changes.
-        self.labelList.itemChanged.connect(self.labelItemChanged)
-        listLayout.addWidget(self.labelList)
+        self.pairListWidget = QListWidget()
+        self.pairListWidget.itemDoubleClicked.connect(self.pairitemDoubleClicked)
+        pairlistLayout = QVBoxLayout()
+        pairlistLayout.setContentsMargins(0, 0, 0, 0)
+        pairlistLayout.addWidget(self.pairListWidget)
+        pairListContainer = QWidget()
+        pairListContainer.setLayout(pairlistLayout)
+        self.pairdock = QDockWidget(getStr('pairList'), self)
+        self.pairdock.setObjectName(getStr('pairs'))
+        self.pairdock.setWidget(pairListContainer)
 
+        self.fileListWidgetI = QListWidget()
+        self.fileListWidgetI.itemDoubleClicked.connect(self.fileitemDoubleClickedI)
+        filelistLayoutI = QVBoxLayout()
+        filelistLayoutI.setContentsMargins(0, 0, 0, 0)
+        filelistLayoutI.addWidget(self.fileListWidgetI)
+        fileListContainerI = QWidget()
+        fileListContainerI.setLayout(filelistLayoutI)
+        self.filedockI = QDockWidget(getStr('fileListI'), self)
+        self.filedockI.setObjectName(getStr('files'))
+        self.filedockI.setWidget(fileListContainerI)
 
-
-        self.dock = QDockWidget(getStr('boxLabelText'), self)
-        self.dock.setObjectName(getStr('labels'))
-        self.dock.setWidget(labelListContainer)
-
-        self.fileListWidget = QListWidget()
-        self.fileListWidget.itemDoubleClicked.connect(self.fileitemDoubleClicked)
-        filelistLayout = QVBoxLayout()
-        filelistLayout.setContentsMargins(0, 0, 0, 0)
-        filelistLayout.addWidget(self.fileListWidget)
-        fileListContainer = QWidget()
-        fileListContainer.setLayout(filelistLayout)
-        self.filedock = QDockWidget(getStr('fileList'), self)
-        self.filedock.setObjectName(getStr('files'))
-        self.filedock.setWidget(fileListContainer)
+        self.fileListWidgetJ = QListWidget()
+        self.fileListWidgetJ.itemDoubleClicked.connect(self.fileitemDoubleClickedJ)
+        filelistLayoutJ = QVBoxLayout()
+        filelistLayoutJ.setContentsMargins(0, 0, 0, 0)
+        filelistLayoutJ.addWidget(self.fileListWidgetJ)
+        fileListContainerJ = QWidget()
+        fileListContainerJ.setLayout(filelistLayoutJ)
+        self.filedockJ = QDockWidget(getStr('fileListJ'), self)
+        self.filedockJ.setObjectName(getStr('files'))
+        self.filedockJ.setWidget(fileListContainerJ)
 
         self.zoomWidget = ZoomWidget()
         self.colorDialog = ColorDialog(parent=self)
@@ -195,23 +183,26 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.drawingPolygon.connect(self.toggleDrawingSensitive)
 
         self.setCentralWidget(scroll)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.dock)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.filedock)
-        self.filedock.setFeatures(QDockWidget.DockWidgetFloatable)
-
-        self.dockFeatures = QDockWidget.DockWidgetClosable | QDockWidget.DockWidgetFloatable
-        self.dock.setFeatures(self.dock.features() ^ self.dockFeatures)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.pairdock)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.filedockI)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.filedockJ)
+        self.filedockI.setFeatures(QDockWidget.DockWidgetFloatable)
+        self.filedockJ.setFeatures(QDockWidget.DockWidgetFloatable)
 
         # Actions
         action = partial(newAction, self)
-        quit = action(getStr('quit'), self.close,
-                      'Ctrl+Q', 'quit', getStr('quitApp'))
 
-        open = action(getStr('openFile'), self.openFile,
-                      'Ctrl+O', 'open', getStr('openFileDetail'))
+        openFile = action(
+            getStr('openFile'), self.openMatchingFile,
+            'Ctrl+O', 'open', getStr('openFileDetail'))
 
-        opendir = action(getStr('openDir'), self.openDirDialog,
-                         'Ctrl+u', 'open', getStr('openDir'))
+        openDir = action(
+            getStr('openDir'), self.openDirDialog,
+            'Ctrl+u', 'open', getStr('openDir'))
+
+        quit = action(
+            getStr('quit'), self.close,
+            'Ctrl+Q', 'quit', getStr('quitApp'))
 
         copyPrevBounding = action(getStr('copyPrevBounding'), self.copyPreviousBoundingBoxes,
                          'Ctrl+v', 'paste', getStr('copyPrevBounding'))
@@ -297,18 +288,23 @@ class MainWindow(QMainWindow, WindowMixin):
                                              fmtShortcut("Ctrl+Wheel")))
         self.zoomWidget.setEnabled(False)
 
-        zoomIn = action(getStr('zoomin'), partial(self.addZoom, 10),
-                        'Ctrl++', 'zoom-in', getStr('zoominDetail'), enabled=False)
-        zoomOut = action(getStr('zoomout'), partial(self.addZoom, -10),
-                         'Ctrl+-', 'zoom-out', getStr('zoomoutDetail'), enabled=False)
-        zoomOrg = action(getStr('originalsize'), partial(self.setZoom, 100),
-                         'Ctrl+=', 'zoom', getStr('originalsizeDetail'), enabled=False)
-        fitWindow = action(getStr('fitWin'), self.setFitWindow,
-                           'Ctrl+F', 'fit-window', getStr('fitWinDetail'),
-                           checkable=True, enabled=False)
-        fitWidth = action(getStr('fitWidth'), self.setFitWidth,
-                          'Ctrl+Shift+F', 'fit-width', getStr('fitWidthDetail'),
-                          checkable=True, enabled=False)
+        zoomIn = action(
+            getStr('zoomin'), partial(self.addZoom, 10),
+            'Ctrl++', 'zoom-in', getStr('zoominDetail'), enabled=False)
+        zoomOut = action(
+            getStr('zoomout'), partial(self.addZoom, -10),
+            'Ctrl+-', 'zoom-out', getStr('zoomoutDetail'), enabled=False)
+        zoomOrg = action(
+            getStr('originalsize'), partial(self.setZoom, 100),
+            'Ctrl+=', 'zoom', getStr('originalsizeDetail'), enabled=False)
+        fitWindow = action(
+            getStr('fitWin'), self.setFitWindow,
+            'Ctrl+F', 'fit-window', getStr('fitWinDetail'),
+            checkable=True, enabled=False)
+        fitWidth = action(
+            getStr('fitWidth'), self.setFitWidth,
+            'Ctrl+Shift+F', 'fit-width', getStr('fitWidthDetail'),
+            checkable=True, enabled=False)
         # Group zoom controls into a list for easier toggling.
         zoomActions = (self.zoomWidget, zoomIn, zoomOut,
                        zoomOrg, fitWindow, fitWidth)
@@ -320,28 +316,12 @@ class MainWindow(QMainWindow, WindowMixin):
             self.MANUAL_ZOOM: lambda: 1,
         }
 
-        edit = action(getStr('editLabel'), self.editLabel,
-                      'Ctrl+E', 'edit', getStr('editLabelDetail'),
-                      enabled=False)
-        self.editButton.setDefaultAction(edit)
-
         shapeLineColor = action(getStr('shapeLineColor'), self.chshapeLineColor,
                                 icon='color_line', tip=getStr('shapeLineColorDetail'),
                                 enabled=False)
         shapeFillColor = action(getStr('shapeFillColor'), self.chshapeFillColor,
                                 icon='color', tip=getStr('shapeFillColorDetail'),
                                 enabled=False)
-
-        labels = self.dock.toggleViewAction()
-        labels.setText(getStr('showHide'))
-        labels.setShortcut('Ctrl+Shift+L')
-
-        # Label list context menu.
-        labelMenu = QMenu()
-        addActions(labelMenu, (edit, delete))
-        self.labelList.setContextMenuPolicy(Qt.CustomContextMenu)
-        self.labelList.customContextMenuRequested.connect(
-            self.popLabelListMenu)
 
         # Draw squares/rectangles
         self.drawSquaresOption = QAction('Draw Squares', self)
@@ -351,32 +331,45 @@ class MainWindow(QMainWindow, WindowMixin):
         self.drawSquaresOption.triggered.connect(self.toogleDrawSquare)
 
         # Store actions for further handling.
-        self.actions = struct(save=save, save_format=save_format, saveAs=saveAs, open=open, close=close, resetAll = resetAll, deleteImg = deleteImg,
-                              lineColor=color1, create=create, delete=delete, edit=edit, copy=copy,
-                              createMode=createMode, editMode=editMode, advancedMode=advancedMode,
-                              shapeLineColor=shapeLineColor, shapeFillColor=shapeFillColor,
-                              zoom=zoom, zoomIn=zoomIn, zoomOut=zoomOut, zoomOrg=zoomOrg,
-                              fitWindow=fitWindow, fitWidth=fitWidth,
-                              zoomActions=zoomActions,
-                              fileMenuActions=(
-                                  open, opendir, save, saveAs, close, resetAll, quit),
-                              beginner=(), advanced=(),
-                              editMenu=(edit, copy, delete,
-                                        None, color1, self.drawSquaresOption),
-                              beginnerContext=(create, edit, copy, delete),
-                              advancedContext=(createMode, editMode, edit, copy,
-                                               delete, shapeLineColor, shapeFillColor),
-                              onLoadActive=(
-                                  close, create, createMode, editMode),
-                              onShapesPresent=(saveAs, hideAll, showAll))
+        self.actions = struct(
+            save=save,
+            save_format=save_format,
+            saveAs=saveAs,
+            openFile=openFile,
+            close=close,
+            resetAll=resetAll,
+            deleteImg=deleteImg,
+            lineColor=color1,
+            create=create,
+            delete=delete,
+            copy=copy,
+            createMode=createMode,
+            editMode=editMode,
+            advancedMode=advancedMode,
+            shapeLineColor=shapeLineColor,
+            shapeFillColor=shapeFillColor,
+            zoom=zoom,
+            zoomIn=zoomIn,
+            zoomOut=zoomOut,
+            zoomOrg=zoomOrg,
+            fitWindow=fitWindow,
+            fitWidth=fitWidth,
+            zoomActions=zoomActions,
+            fileMenuActions=(openFile, openDir, save, saveAs, close, resetAll, quit),
+            beginner=(),
+            advanced=(),
+            editMenu=(copy, delete, None, color1, self.drawSquaresOption),
+            beginnerContext=(create, copy, delete),
+            advancedContext=(createMode, editMode, copy, delete, shapeLineColor, shapeFillColor),
+            onLoadActive=(close, create, createMode, editMode),
+            onShapesPresent=(saveAs, hideAll, showAll))
 
         self.menus = struct(
             file=self.menu('&File'),
             edit=self.menu('&Edit'),
             view=self.menu('&View'),
             help=self.menu('&Help'),
-            recentFiles=QMenu('Open &Recent'),
-            labelList=labelMenu)
+            recentFiles=QMenu('Open &Recent'))
 
         # Auto saving : Enable auto saving if pressing next
         self.autoSaving = QAction(getStr('autoSaveMode'), self)
@@ -396,13 +389,14 @@ class MainWindow(QMainWindow, WindowMixin):
         self.displayLabelOption.triggered.connect(self.togglePaintLabelsOption)
 
         addActions(self.menus.file,
-                   (open, opendir, copyPrevBounding, changeSavedir, openAnnotation, self.menus.recentFiles, save, save_format, saveAs, close, resetAll, deleteImg, quit))
+                   (openFile, openDir, copyPrevBounding, changeSavedir, openAnnotation, self.menus.recentFiles,
+                    save, save_format, saveAs, close, resetAll, deleteImg, quit))
         addActions(self.menus.help, (help, showInfo))
         addActions(self.menus.view, (
             self.autoSaving,
             self.singleClassMode,
             self.displayLabelOption,
-            labels, advancedMode, None,
+            advancedMode, None,
             hideAll, showAll, None,
             zoomIn, zoomOut, zoomOrg, None,
             fitWindow, fitWidth))
@@ -417,11 +411,12 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.tools = self.toolbar('Tools')
         self.actions.beginner = (
-            open, opendir, changeSavedir, openNextImg, openPrevImg, verify, save, save_format, None, create, copy, delete, None,
+            openFile, openDir, changeSavedir, openNextImg, openPrevImg,
+            verify, save, save_format, None, create, copy, delete, None,
             zoomIn, zoom, zoomOut, fitWindow, fitWidth)
 
         self.actions.advanced = (
-            open, opendir, changeSavedir, openNextImg, openPrevImg, save, save_format, None,
+            openFile, openDir, changeSavedir, openNextImg, openPrevImg, save, save_format, None,
             createMode, editMode, None,
             hideAll, showAll)
 
@@ -698,56 +693,38 @@ class MainWindow(QMainWindow, WindowMixin):
             action.triggered.connect(partial(self.loadRecent, f))
             menu.addAction(action)
 
-    def popLabelListMenu(self, point):
-        self.menus.labelList.exec_(self.labelList.mapToGlobal(point))
+    def pairitemDoubleClicked(self, item=None):
+        idx = self.pairListWidget.currentIndex().row()
+        if idx < len(self.matching['valid_pairs']):
+            id_view_i = self.matching['valid_pairs'][idx][0]
+            id_view_j = self.matching['valid_pairs'][idx][1]
+            self.changePair(id_view_i, id_view_j)
 
-    def editLabel(self):
-        if not self.canvas.editing():
-            return
-        item = self.currentItem()
-        if not item:
-            return
-        text = self.labelDialog.popUp(item.text())
-        if text is not None:
-            item.setText(text)
-            item.setBackground(generateColorByText(text))
-            self.setDirty()
-            self.updateComboBox()
+    def fileitemDoubleClickedI(self, item=None):
+        id_view_i = self.matching['views'][self.fileListWidgetI.currentIndex().row()]['id_view']
+        id_view_j = self.matching['views'][self.fileListWidgetJ.currentIndex().row()]['id_view']
+        self.changePair(id_view_i, id_view_j)
 
-    # Tzutalin 20160906 : Add file list and dock to move faster
-    def fileitemDoubleClicked(self, item=None):
-        currIndex = self.mImgList.index(ustr(item.text()))
-        if currIndex < len(self.mImgList):
-            filename = self.mImgList[currIndex]
-            if filename:
-                self.loadFile(filename)
+    def fileitemDoubleClickedJ(self, item=None):
+        id_view_i = self.matching['views'][self.fileListWidgetI.currentIndex().row()]['id_view']
+        id_view_j = self.matching['views'][self.fileListWidgetJ.currentIndex().row()]['id_view']
+        self.changePair(id_view_i, id_view_j)
 
-    # Add chris
-    def btnstate(self, item= None):
-        """ Function to handle difficult examples
-        Update on each object """
-        if not self.canvas.editing():
-            return
+    def changePair(self, id_view_i, id_view_j):
+        m = [p == [id_view_i, id_view_j] for p in self.matching['valid_pairs']]
+        if len(self.matching['valid_pairs']) < self.pairListWidget.count():
+            self.pairListWidget.takeItem(self.pairListWidget.count()-1)
+        if any(m):
+            idx = m.index(True)
+            self.pairListWidget.setCurrentRow(idx)
+        else:
+            self.pairListWidget.addItem('None ({}, {})'.format(id_view_i, id_view_j))
+            self.pairListWidget.setCurrentRow(self.pairListWidget.count()-1)
+        self.fileListWidgetI.setCurrentRow(self.get_view_idx(id_view_i))
+        self.fileListWidgetJ.setCurrentRow(self.get_view_idx(id_view_j))
 
-        item = self.currentItem()
-        if not item: # If not selected Item, take the first one
-            item = self.labelList.item(self.labelList.count()-1)
-
-        difficult = self.diffcButton.isChecked()
-
-        try:
-            shape = self.itemsToShapes[item]
-        except:
-            pass
-        # Checked and Update
-        try:
-            if difficult != shape.difficult:
-                shape.difficult = difficult
-                self.setDirty()
-            else:  # User probably changed item visibility
-                self.canvas.setShapeVisible(shape, item.checkState() == Qt.Checked)
-        except:
-            pass
+    def get_view_idx(self, id_view):
+        return [v['id_view'] == id_view for v in self.matching['views']].index(True)
 
     # React to canvas signals.
     def shapeSelectionChanged(self, selected=False):
@@ -1025,6 +1002,18 @@ class MainWindow(QMainWindow, WindowMixin):
     def togglePolygons(self, value):
         for item, shape in self.itemsToShapes.items():
             item.setCheckState(Qt.Checked if value else Qt.Unchecked)
+
+    def loadMatchingFile(self, filePath):
+        with open(filePath, 'r') as f:
+            self.matching = json.load(f)
+        self.pairListWidget.clear()
+        self.fileListWidgetI.clear()
+        self.fileListWidgetJ.clear()
+        for valid_pair in self.matching['valid_pairs']:
+            self.pairListWidget.addItem('({}, {})'.format(valid_pair[0], valid_pair[1]))
+        for view in self.matching['views']:
+            self.fileListWidgetI.addItem('{} | {}'.format(view['id_view'], view['filename']))
+            self.fileListWidgetJ.addItem('{} | {}'.format(view['id_view'], view['filename']))
 
     def loadFile(self, filePath=None):
         """Load the specified file, or the last opened file if None."""
@@ -1351,17 +1340,16 @@ class MainWindow(QMainWindow, WindowMixin):
         if filename:
             self.loadFile(filename)
 
-    def openFile(self, _value=False):
+    def openMatchingFile(self, _value=False):
         if not self.mayContinue():
             return
-        path = os.path.dirname(ustr(self.filePath)) if self.filePath else '.'
-        formats = ['*.%s' % fmt.data().decode("ascii").lower() for fmt in QImageReader.supportedImageFormats()]
-        filters = "Image & Label files (%s)" % ' '.join(formats + ['*%s' % LabelFile.suffix])
-        filename = QFileDialog.getOpenFileName(self, '%s - Choose Image or Label file' % __appname__, path, filters)
+        path = osp.dirname(ustr(self.filePath)) if self.filePath else '.'
+        filters = 'matching file (*.json)'
+        filename = QFileDialog.getOpenFileName(self, '%s - Choose matching file' % __appname__, path, filters)
         if filename:
             if isinstance(filename, (tuple, list)):
                 filename = filename[0]
-            self.loadFile(filename)
+            self.loadMatchingFile(filename)
 
     def saveFile(self, _value=False):
         if self.defaultSaveDir is not None and len(ustr(self.defaultSaveDir)):
@@ -1600,6 +1588,7 @@ def main():
     '''construct main app and run it'''
     app, _win = get_main_app(sys.argv)
     return app.exec_()
+
 
 if __name__ == '__main__':
     sys.exit(main())
