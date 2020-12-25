@@ -10,7 +10,8 @@ import re
 import sys
 import subprocess
 import json
-
+import numpy as np
+import cv2
 from functools import partial
 from collections import defaultdict
 
@@ -96,11 +97,9 @@ class MainWindow(QMainWindow, WindowMixin):
         self.defaultSaveDir = defaultSaveDir
         self.labelFileFormat = settings.get(SETTING_LABEL_FILE_FORMAT, LabelFileFormat.PASCAL_VOC)
 
-        # For loading all image under a directory
-        self.mImgList = []
-        self.dirname = None
-        self.labelHist = []
-        self.lastOpenDir = None
+        self.imageDir = None
+        self.img_i_w, self.img_i_h = None, None
+        self.img_j_w, self.img_j_h = None, None
 
         # Whether we need to save or not.
         self.dirty = False
@@ -109,12 +108,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self._beginner = True
         self.screencastViewer = self.getAvailableScreencastViewer()
         self.screencast = "https://youtu.be/p0nR2YsCY_U"
-
-        # Load predefined classes to the list
-        self.loadPredefinedClasses(defaultPrefdefClassFile)
-
-        # Main widgets and related state.
-        self.labelDialog = LabelDialog(parent=self, listItem=self.labelHist)
 
         self.itemsToShapes = {}
         self.shapesToItems = {}
@@ -197,7 +190,7 @@ class MainWindow(QMainWindow, WindowMixin):
             'Ctrl+O', 'open', getStr('openFileDetail'))
 
         openDir = action(
-            getStr('openDir'), self.openDirDialog,
+            getStr('openDir'), self.openImageDirDialog,
             'Ctrl+u', 'open', getStr('openDir'))
 
         quit = action(
@@ -720,10 +713,24 @@ class MainWindow(QMainWindow, WindowMixin):
         else:
             self.pairListWidget.addItem('None ({}, {})'.format(id_view_i, id_view_j))
             self.pairListWidget.setCurrentRow(self.pairListWidget.count()-1)
-        self.fileListWidgetI.setCurrentRow(self.get_view_idx(id_view_i))
-        self.fileListWidgetJ.setCurrentRow(self.get_view_idx(id_view_j))
+        idx_view_i = self.get_idx_view(id_view_i)
+        idx_view_j = self.get_idx_view(id_view_j)
+        self.fileListWidgetI.setCurrentRow(idx_view_i)
+        self.fileListWidgetJ.setCurrentRow(idx_view_j)
+        img_i = cv2.imread(osp.join(self.imageDir, self.matching['views'][idx_view_i]['filename']))
+        img_j = cv2.imread(osp.join(self.imageDir, self.matching['views'][idx_view_j]['filename']))
+        self.img_i_h, self.img_i_w, _ = img_i.shape
+        self.img_j_h, self.img_j_w, _ = img_j.shape
+        img_h = self.img_i_h + self.img_j_h
+        img_w = max(self.img_i_w, self.img_j_w)
+        img = np.zeros(shape=(img_h, img_w, 3), dtype=np.uint8)
+        img[:self.img_i_h, :self.img_i_w, :] = img_i
+        img[self.img_i_h:, :self.img_j_w, :] = img_j
+        qimg = QImage(img.flatten(), img_w, img_h, QImage.Format_BGR888)
+        self.image = qimg
+        self.canvas.loadPixmap(QPixmap.fromImage(qimg))
 
-    def get_view_idx(self, id_view):
+    def get_idx_view(self, id_view):
         return [v['id_view'] == id_view for v in self.matching['views']].index(True)
 
     # React to canvas signals.
@@ -1014,6 +1021,9 @@ class MainWindow(QMainWindow, WindowMixin):
         for view in self.matching['views']:
             self.fileListWidgetI.addItem('{} | {}'.format(view['id_view'], view['filename']))
             self.fileListWidgetJ.addItem('{} | {}'.format(view['id_view'], view['filename']))
+        id_view_i = self.matching['valid_pairs'][0][0]
+        id_view_j = self.matching['valid_pairs'][0][1]
+        self.changePair(id_view_i, id_view_j)
 
     def loadFile(self, filePath=None):
         """Load the specified file, or the last opened file if None."""
@@ -1082,7 +1092,6 @@ class MainWindow(QMainWindow, WindowMixin):
             self.paintCanvas()
             self.addRecentFile(self.filePath)
             self.toggleActions(True)
-            self.showBoundingBoxFromAnnotationFile(filePath)
 
             self.setWindowTitle(__appname__ + ' ' + filePath)
 
@@ -1094,32 +1103,6 @@ class MainWindow(QMainWindow, WindowMixin):
             self.canvas.setFocus(True)
             return True
         return False
-
-    def showBoundingBoxFromAnnotationFile(self, filePath):
-        if self.defaultSaveDir is not None:
-            basename = os.path.basename(os.path.splitext(filePath)[0])
-            filedir = filePath.split(basename)[0].split(os.path.sep)[-2:-1][0]
-            xmlPath = os.path.join(self.defaultSaveDir, basename + XML_EXT)
-            txtPath = os.path.join(self.defaultSaveDir, basename + TXT_EXT)
-            jsonPath = os.path.join(self.defaultSaveDir, filedir + JSON_EXT)
-
-            """Annotation file priority:
-            PascalXML > YOLO
-            """
-            if os.path.isfile(xmlPath):
-                self.loadPascalXMLByFilename(xmlPath)
-            elif os.path.isfile(txtPath):
-                self.loadYOLOTXTByFilename(txtPath)
-            elif os.path.isfile(jsonPath):
-                self.loadCreateMLJSONByFilename(jsonPath, filePath)
-
-        else:
-            xmlPath = os.path.splitext(filePath)[0] + XML_EXT
-            txtPath = os.path.splitext(filePath)[0] + TXT_EXT
-            if os.path.isfile(xmlPath):
-                self.loadPascalXMLByFilename(xmlPath)
-            elif os.path.isfile(txtPath):
-                self.loadYOLOTXTByFilename(txtPath)
 
     def resizeEvent(self, event):
         if self.canvas and not self.image.isNull()\
@@ -1238,37 +1221,18 @@ class MainWindow(QMainWindow, WindowMixin):
                     filename = filename[0]
             self.loadPascalXMLByFilename(filename)
 
-    def openDirDialog(self, _value=False, dirpath=None, silent=False):
-        if not self.mayContinue():
-            return
-
-        defaultOpenDirPath = dirpath if dirpath else '.'
-        if self.lastOpenDir and os.path.exists(self.lastOpenDir):
-            defaultOpenDirPath = self.lastOpenDir
+    def openImageDirDialog(self, _value=False, dirpath=None, silent=False):
+        if self.imageDir and os.path.exists(self.imageDir):
+            defaultOpenDirPath = self.imageDir
         else:
             defaultOpenDirPath = os.path.dirname(self.filePath) if self.filePath else '.'
-        if silent!=True :
-            targetDirPath = ustr(QFileDialog.getExistingDirectory(self,
-                                                         '%s - Open Directory' % __appname__, defaultOpenDirPath,
-                                                         QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks))
+        if silent is not True:
+            self.imageDir = ustr(
+                QFileDialog.getExistingDirectory(
+                    self, '%s - Open Directory' % __appname__, defaultOpenDirPath,
+                    QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks))
         else:
-            targetDirPath = ustr(defaultOpenDirPath)
-        self.lastOpenDir = targetDirPath
-        self.importDirImages(targetDirPath)
-
-    def importDirImages(self, dirpath):
-        if not self.mayContinue() or not dirpath:
-            return
-
-        self.lastOpenDir = dirpath
-        self.dirname = dirpath
-        self.filePath = None
-        self.fileListWidget.clear()
-        self.mImgList = self.scanAllImages(dirpath)
-        self.openNextImg()
-        for imgPath in self.mImgList:
-            item = QListWidgetItem(imgPath)
-            self.fileListWidget.addItem(item)
+            self.imageDir = ustr(defaultOpenDirPath)
 
     def verifyImg(self, _value=False):
         # Proceding next image without dialog if having any label
@@ -1483,16 +1447,6 @@ class MainWindow(QMainWindow, WindowMixin):
     def moveShape(self):
         self.canvas.endMove(copy=False)
         self.setDirty()
-
-    def loadPredefinedClasses(self, predefClassesFile):
-        if os.path.exists(predefClassesFile) is True:
-            with codecs.open(predefClassesFile, 'r', 'utf8') as f:
-                for line in f:
-                    line = line.strip()
-                    if self.labelHist is None:
-                        self.labelHist = [line]
-                    else:
-                        self.labelHist.append(line)
 
     def loadPascalXMLByFilename(self, xmlPath):
         if self.filePath is None:
