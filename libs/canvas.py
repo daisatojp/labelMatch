@@ -96,11 +96,7 @@ class Canvas(QWidget):
     def mouseMoveEvent(self, ev):
         pos = self.transformPos(ev.pos())
 
-        # Update coordinates in status bar if image is opened
-        window = self.parent().window()
-        if window.filePath is not None:
-            self.parent().window().labelCoordinates.setText(
-                'X: %d; Y: %d' % (pos.x(), pos.y()))
+        self.parent().window().labelCoordinates.setText('X: {}; Y: {}'.format(pos.x(), pos.y()))
 
         self.overrideCursor(CURSOR_DRAW)
         if self.current:
