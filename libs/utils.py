@@ -68,10 +68,6 @@ class struct(object):
         self.__dict__.update(kwargs)
 
 
-def distance(p):
-    return sqrt(p.x() * p.x() + p.y() * p.y())
-
-
 def fmtShortcut(text):
     mod, key = text.split('+', 1)
     return '<b>%s</b>+<b>%s</b>' % (mod, key)

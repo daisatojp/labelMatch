@@ -14,28 +14,15 @@ import numpy as np
 import cv2
 from functools import partial
 from collections import defaultdict
-
-try:
-    from PyQt5.QtGui import *
-    from PyQt5.QtCore import *
-    from PyQt5.QtWidgets import *
-except ImportError:
-    # needed for py3+qt4
-    # Ref:
-    # http://pyqt.sourceforge.net/Docs/PyQt4/incompatible_apis.html
-    # http://stackoverflow.com/questions/21217399/pyqt4-qtcore-qvariant-object-instead-of-a-string
-    if sys.version_info.major >= 3:
-        import sip
-        sip.setapi('QVariant', 2)
-    from PyQt4.QtGui import *
-    from PyQt4.QtCore import *
-
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
 from libs.combobox import ComboBox
 # from libs.resources import *
 from libs.constants import *
 from libs.utils import *
 from libs.settings import Settings
-from libs.shape import Shape, DEFAULT_LINE_COLOR, DEFAULT_FILL_COLOR
+from libs.keypoints import Keypoints
 from libs.stringBundle import StringBundle
 from libs.canvas import Canvas
 from libs.zoomWidget import ZoomWidget
@@ -419,7 +406,6 @@ class MainWindow(QMainWindow, WindowMixin):
         # Application state.
         self.image = QImage()
         self.filePath = ustr(defaultFilename)
-        self.lastOpenDir= None
         self.recentFiles = []
         self.maxRecent = 7
         self.lineColor = None
@@ -456,11 +442,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.statusBar().show()
 
         self.restoreState(settings.get(SETTING_WIN_STATE, QByteArray()))
-        Shape.line_color = self.lineColor = QColor(settings.get(SETTING_LINE_COLOR, DEFAULT_LINE_COLOR))
-        Shape.fill_color = self.fillColor = QColor(settings.get(SETTING_FILL_COLOR, DEFAULT_FILL_COLOR))
         self.canvas.setDrawingColor(self.lineColor)
-        # Add chris
-        Shape.difficult = self.difficult
 
         def xbool(x):
             if isinstance(x, QVariant):
@@ -704,9 +686,9 @@ class MainWindow(QMainWindow, WindowMixin):
         self.changePair(id_view_i, id_view_j)
 
     def changePair(self, id_view_i, id_view_j):
-        m = [p == [id_view_i, id_view_j] for p in self.matching['valid_pairs']]
         if len(self.matching['valid_pairs']) < self.pairListWidget.count():
             self.pairListWidget.takeItem(self.pairListWidget.count()-1)
+        m = [p == [id_view_i, id_view_j] for p in self.matching['valid_pairs']]
         if any(m):
             idx = m.index(True)
             self.pairListWidget.setCurrentRow(idx)
@@ -721,6 +703,7 @@ class MainWindow(QMainWindow, WindowMixin):
         img_j = cv2.imread(osp.join(self.imageDir, self.matching['views'][idx_view_j]['filename']))
         self.img_i_h, self.img_i_w, _ = img_i.shape
         self.img_j_h, self.img_j_w, _ = img_j.shape
+        # set image
         img_h = self.img_i_h + self.img_j_h
         img_w = max(self.img_i_w, self.img_j_w)
         img = np.zeros(shape=(img_h, img_w, 3), dtype=np.uint8)
@@ -728,7 +711,19 @@ class MainWindow(QMainWindow, WindowMixin):
         img[self.img_i_h:, :self.img_j_w, :] = img_j
         qimg = QImage(img.flatten(), img_w, img_h, QImage.Format_BGR888)
         self.image = qimg
-        self.canvas.loadPixmap(QPixmap.fromImage(qimg))
+        self.canvas.setPixmap(QPixmap.fromImage(qimg))
+        # set keypoints
+        keypoints_i = Keypoints()
+        for p in self.matching['views'][idx_view_i]['keypoints']:
+            keypoints_i.append(p[0], p[1])
+        keypoints_j = Keypoints()
+        for p in self.matching['views'][idx_view_j]['keypoints']:
+            keypoints_j.append(p[0], p[1])
+        self.canvas.setKeypoints_i(keypoints_i)
+        self.canvas.setKeypoints_j(keypoints_j)
+        # set offset
+        self.canvas.setOffset(self.img_i_h)
+        self.canvas.repaint()
 
     def get_idx_view(self, id_view):
         return [v['id_view'] == id_view for v in self.matching['views']].index(True)
@@ -800,7 +795,6 @@ class MainWindow(QMainWindow, WindowMixin):
 
             self.addLabel(shape)
         self.updateComboBox()
-        self.canvas.loadShapes(s)
 
     def updateComboBox(self):
         # Get the unique labels and add them to the Combobox.

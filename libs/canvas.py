@@ -1,24 +1,14 @@
 
-try:
-    from PyQt5.QtGui import *
-    from PyQt5.QtCore import *
-    from PyQt5.QtWidgets import *
-except ImportError:
-    from PyQt4.QtGui import *
-    from PyQt4.QtCore import *
-
-#from PyQt4.QtOpenGL import *
-
-from libs.shape import Shape
-from libs.utils import distance
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
+from libs.keypoint import Keypoint
 
 CURSOR_DEFAULT = Qt.ArrowCursor
 CURSOR_POINT = Qt.PointingHandCursor
 CURSOR_DRAW = Qt.CrossCursor
 CURSOR_MOVE = Qt.ClosedHandCursor
 CURSOR_GRAB = Qt.OpenHandCursor
-
-# class Canvas(QGLWidget):
 
 
 class Canvas(QWidget):
@@ -37,13 +27,15 @@ class Canvas(QWidget):
         super(Canvas, self).__init__(*args, **kwargs)
         # Initialise local state.
         self.mode = self.EDIT
-        self.shapes = []
+        self.keypoints_i = None
+        self.keypoints_j = None
+        self.matches = []
+        self.offset = 0
         self.current = None
         self.selectedShape = None  # save the selected shape here
         self.selectedShapeCopy = None
         self.drawingLineColor = QColor(0, 0, 255)
         self.drawingRectColor = QColor(0, 0, 255)
-        self.line = Shape(line_color=self.drawingLineColor)
         self.prevPoint = QPointF()
         self.offsets = QPointF(), QPointF()
         self.scale = 1.0
@@ -105,7 +97,6 @@ class Canvas(QWidget):
         return self.hVertex is not None
 
     def mouseMoveEvent(self, ev):
-        """Update line with last point and current coordinates."""
         pos = self.transformPos(ev.pos())
 
         # Update coordinates in status bar if image is opened
@@ -191,41 +182,41 @@ class Canvas(QWidget):
                 self.update()
             return
 
-        # Just hovering over the canvas, 2 posibilities:
-        # - Highlight shapes
-        # - Highlight vertex
-        # Update shape/vertex fill and tooltip value accordingly.
-        self.setToolTip("Image")
-        for shape in reversed([s for s in self.shapes if self.isVisible(s)]):
-            # Look for a nearby vertex to highlight. If that fails,
-            # check if we happen to be inside a shape.
-            index = shape.nearestVertex(pos, self.epsilon)
-            if index is not None:
-                if self.selectedVertex():
-                    self.hShape.highlightClear()
-                self.hVertex, self.hShape = index, shape
-                shape.highlightVertex(index, shape.MOVE_VERTEX)
-                self.overrideCursor(CURSOR_POINT)
-                self.setToolTip("Click & drag to move point")
-                self.setStatusTip(self.toolTip())
-                self.update()
-                break
-            elif shape.containsPoint(pos):
-                if self.selectedVertex():
-                    self.hShape.highlightClear()
-                self.hVertex, self.hShape = None, shape
-                self.setToolTip(
-                    "Click & drag to move shape '%s'" % shape.label)
-                self.setStatusTip(self.toolTip())
-                self.overrideCursor(CURSOR_GRAB)
-                self.update()
-                break
-        else:  # Nothing found, clear highlights, reset state.
-            if self.hShape:
-                self.hShape.highlightClear()
-                self.update()
-            self.hVertex, self.hShape = None, None
-            self.overrideCursor(CURSOR_DEFAULT)
+        if self.keypoints_i and pos.y() < self.offset:
+            val, idx = self.keypoints_i.min_distance(pos.x(), pos.y())
+            if val < self.epsilon:
+                self.keypoints_i.select(idx)
+
+            # for keypoint in reversed([s for s in self.shapes if self.isVisible(s)]):
+            #     # Look for a nearby vertex to highlight. If that fails,
+            #     # check if we happen to be inside a shape.
+            #     index = shape.nearestVertex(pos, self.epsilon)
+            #     if index is not None:
+            #         if self.selectedVertex():
+            #             self.hShape.highlightClear()
+            #         self.hVertex, self.hShape = index, shape
+            #         shape.highlightVertex(index, shape.MOVE_VERTEX)
+            #         self.overrideCursor(CURSOR_POINT)
+            #         self.setToolTip("Click & drag to move point")
+            #         self.setStatusTip(self.toolTip())
+            #         self.update()
+            #         break
+            #     elif shape.containsPoint(pos):
+            #         if self.selectedVertex():
+            #             self.hShape.highlightClear()
+            #         self.hVertex, self.hShape = None, shape
+            #         self.setToolTip(
+            #             "Click & drag to move shape '%s'" % shape.label)
+            #         self.setStatusTip(self.toolTip())
+            #         self.overrideCursor(CURSOR_GRAB)
+            #         self.update()
+            #         break
+            #     else:  # Nothing found, clear highlights, reset state.
+            #         if self.hShape:
+            #             self.hShape.highlightClear()
+            #             self.update()
+            #         self.hVertex, self.hShape = None, None
+            #         self.overrideCursor(CURSOR_DEFAULT)
 
     def mousePressEvent(self, ev):
         pos = self.transformPos(ev.pos())
@@ -477,11 +468,13 @@ class Canvas(QWidget):
         p.translate(self.offsetToCenter())
 
         p.drawPixmap(0, 0, self.pixmap)
-        Shape.scale = self.scale
-        for shape in self.shapes:
-            if (shape.selected or not self._hideBackround) and self.isVisible(shape):
-                shape.fill = shape.selected or shape == self.hShape
-                shape.paint(p)
+
+        Keypoint.scale = self.scale
+        if self.keypoints_i:
+            self.keypoints_i.paint(p)
+        if self.keypoints_j:
+            self.keypoints_j.paint(p, self.offset)
+
         if self.current:
             self.current.paint(p)
             self.line.paint(p)
@@ -665,15 +658,20 @@ class Canvas(QWidget):
         self.drawingPolygon.emit(False)
         self.update()
 
-    def loadPixmap(self, pixmap):
+    def setPixmap(self, pixmap):
         self.pixmap = pixmap
-        self.shapes = []
-        self.repaint()
 
-    def loadShapes(self, shapes):
-        self.shapes = list(shapes)
-        self.current = None
-        self.repaint()
+    def setKeypoints_i(self, keypoints_i):
+        self.keypoints_i = keypoints_i
+
+    def setKeypoints_j(self, keypoints_j):
+        self.keypoints_j = keypoints_j
+
+    def setMatches(self, matches):
+        self.matches = matches
+
+    def setOffset(self, offset):
+        self.offset = offset
 
     def setShapeVisible(self, shape, value):
         self.visible[shape] = value
