@@ -19,14 +19,14 @@ class Canvas(QWidget):
     shapeMoved = pyqtSignal()
     drawingPolygon = pyqtSignal(bool)
 
-    CREATE, EDIT = list(range(2))
+    MODE_EDIT_KEYPOINT = 1
+    MODE_EDIT_MATCH = 2
 
     epsilon = 11.0
 
     def __init__(self, *args, **kwargs):
         super(Canvas, self).__init__(*args, **kwargs)
-        # Initialise local state.
-        self.mode = self.EDIT
+        self.mode = self.MODE_EDIT_KEYPOINT
         self.keypoints_i = None
         self.keypoints_j = None
         self.matches = []
@@ -74,9 +74,6 @@ class Canvas(QWidget):
     def isVisible(self, shape):
         return self.visible.get(shape, True)
 
-    def drawing(self):
-        return self.mode == self.CREATE
-
     def editing(self):
         return self.mode == self.EDIT
 
@@ -105,51 +102,49 @@ class Canvas(QWidget):
             self.parent().window().labelCoordinates.setText(
                 'X: %d; Y: %d' % (pos.x(), pos.y()))
 
-        # Polygon drawing.
-        if self.drawing():
-            self.overrideCursor(CURSOR_DRAW)
-            if self.current:
-                # Display annotation width and height while drawing
-                currentWidth = abs(self.current[0].x() - pos.x())
-                currentHeight = abs(self.current[0].y() - pos.y())
-                self.parent().window().labelCoordinates.setText(
-                        'Width: %d, Height: %d / X: %d; Y: %d' % (currentWidth, currentHeight, pos.x(), pos.y()))
+        self.overrideCursor(CURSOR_DRAW)
+        if self.current:
+            # Display annotation width and height while drawing
+            currentWidth = abs(self.current[0].x() - pos.x())
+            currentHeight = abs(self.current[0].y() - pos.y())
+            self.parent().window().labelCoordinates.setText(
+                    'Width: %d, Height: %d / X: %d; Y: %d' % (currentWidth, currentHeight, pos.x(), pos.y()))
 
-                color = self.drawingLineColor
-                if self.outOfPixmap(pos):
-                    # Don't allow the user to draw outside the pixmap.
-                    # Clip the coordinates to 0 or max,
-                    # if they are outside the range [0, max]
-                    size = self.pixmap.size()
-                    clipped_x = min(max(0, pos.x()), size.width())
-                    clipped_y = min(max(0, pos.y()), size.height())
-                    pos = QPointF(clipped_x, clipped_y)
-                elif len(self.current) > 1 and self.closeEnough(pos, self.current[0]):
-                    # Attract line to starting point and colorise to alert the
-                    # user:
-                    pos = self.current[0]
-                    color = self.current.line_color
-                    self.overrideCursor(CURSOR_POINT)
-                    self.current.highlightVertex(0, Shape.NEAR_VERTEX)
+            color = self.drawingLineColor
+            if self.outOfPixmap(pos):
+                # Don't allow the user to draw outside the pixmap.
+                # Clip the coordinates to 0 or max,
+                # if they are outside the range [0, max]
+                size = self.pixmap.size()
+                clipped_x = min(max(0, pos.x()), size.width())
+                clipped_y = min(max(0, pos.y()), size.height())
+                pos = QPointF(clipped_x, clipped_y)
+            elif len(self.current) > 1 and self.closeEnough(pos, self.current[0]):
+                # Attract line to starting point and colorise to alert the
+                # user:
+                pos = self.current[0]
+                color = self.current.line_color
+                self.overrideCursor(CURSOR_POINT)
+                self.current.highlightVertex(0, Shape.NEAR_VERTEX)
 
-                if self.drawSquare:
-                    initPos = self.current[0]
-                    minX = initPos.x()
-                    minY = initPos.y()
-                    min_size = min(abs(pos.x() - minX), abs(pos.y() - minY))
-                    directionX = -1 if pos.x() - minX < 0 else 1
-                    directionY = -1 if pos.y() - minY < 0 else 1
-                    self.line[1] = QPointF(minX + directionX * min_size, minY + directionY * min_size)
-                else:
-                    self.line[1] = pos
-
-                self.line.line_color = color
-                self.prevPoint = QPointF()
-                self.current.highlightClear()
+            if self.drawSquare:
+                initPos = self.current[0]
+                minX = initPos.x()
+                minY = initPos.y()
+                min_size = min(abs(pos.x() - minX), abs(pos.y() - minY))
+                directionX = -1 if pos.x() - minX < 0 else 1
+                directionY = -1 if pos.y() - minY < 0 else 1
+                self.line[1] = QPointF(minX + directionX * min_size, minY + directionY * min_size)
             else:
-                self.prevPoint = pos
-            self.repaint()
-            return
+                self.line[1] = pos
+
+            self.line.line_color = color
+            self.prevPoint = QPointF()
+            self.current.highlightClear()
+        else:
+            self.prevPoint = pos
+        self.repaint()
+        return
 
         # Polygon copy moving.
         if Qt.RightButton & ev.buttons():
@@ -260,6 +255,12 @@ class Canvas(QWidget):
                 #pan
                 QApplication.restoreOverrideCursor()
 
+    def setEditKeypointMode(self):
+        self.mode = self.MODE_EDIT_KEYPOINT
+
+    def setEditMatchMode(self):
+        self.mode = self.MODE_EDIT_MATCH
+
     def endMove(self, copy=False):
         assert self.selectedShape and self.selectedShapeCopy
         shape = self.selectedShapeCopy
@@ -301,9 +302,6 @@ class Canvas(QWidget):
             self.setHiding()
             self.drawingPolygon.emit(True)
             self.update()
-
-    def setHiding(self, enable=True):
-        self._hideBackround = self.hideBackround if enable else False
 
     def canCloseShape(self):
         return self.drawing() and self.current and len(self.current) > 2
@@ -492,10 +490,10 @@ class Canvas(QWidget):
             p.setBrush(brush)
             p.drawRect(leftTop.x(), leftTop.y(), rectWidth, rectHeight)
 
-        if self.drawing() and not self.prevPoint.isNull() and not self.outOfPixmap(self.prevPoint):
-            p.setPen(QColor(0, 0, 0))
-            p.drawLine(self.prevPoint.x(), 0, self.prevPoint.x(), self.pixmap.height())
-            p.drawLine(0, self.prevPoint.y(), self.pixmap.width(), self.prevPoint.y())
+        # if self.drawing() and not self.prevPoint.isNull() and not self.outOfPixmap(self.prevPoint):
+        #     p.setPen(QColor(0, 0, 0))
+        #     p.drawLine(self.prevPoint.x(), 0, self.prevPoint.x(), self.pixmap.height())
+        #     p.drawLine(0, self.prevPoint.y(), self.pixmap.width(), self.prevPoint.y())
 
         self.setAutoFillBackground(True)
         if self.verified:

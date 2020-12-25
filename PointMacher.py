@@ -233,18 +233,12 @@ class MainWindow(QMainWindow, WindowMixin):
         color1 = action(getStr('boxLineColor'), self.chooseColor1,
                         'Ctrl+L', 'color_line', getStr('boxLineColorDetail'))
 
-        createMode = action(getStr('crtBox'), self.setCreateMode,
-                            'w', 'new', getStr('crtBoxDetail'), enabled=False)
-        editMode = action('&Edit\nRectBox', self.setEditMode,
-                          'Ctrl+J', 'edit', u'Move and edit Boxs', enabled=False)
-
-        create = action(getStr('crtBox'), self.createShape,
-                        'w', 'new', getStr('crtBoxDetail'), enabled=False)
-        delete = action(getStr('delBox'), self.deleteSelectedShape,
-                        'Delete', 'delete', getStr('delBoxDetail'), enabled=False)
-        copy = action(getStr('dupBox'), self.copySelectedShape,
-                      'Ctrl+D', 'copy', getStr('dupBoxDetail'),
-                      enabled=False)
+        editKeypointMode = action(
+            getStr('editKeypoint'), self.setEditKeypointMode,
+            'v', 'new', getStr('editKeypointDetail'), enabled=True)
+        editMatchMode = action(
+            getStr('editMatch'), self.setEditMatchMode,
+            'e', 'edit', u'Move and edit Boxs', enabled=False)
 
         advancedMode = action(getStr('advancedMode'), self.toggleAdvancedMode,
                               'Ctrl+Shift+A', 'expert', getStr('advancedModeDetail'),
@@ -312,19 +306,17 @@ class MainWindow(QMainWindow, WindowMixin):
 
         # Store actions for further handling.
         self.actions = struct(
+            openFile=openFile,
+            openDir=openDir,
+            editKeypointMode=editKeypointMode,
+            editMatchMode=editMatchMode,
             save=save,
             save_format=save_format,
             saveAs=saveAs,
-            openFile=openFile,
             close=close,
             resetAll=resetAll,
             deleteImg=deleteImg,
             lineColor=color1,
-            create=create,
-            delete=delete,
-            copy=copy,
-            createMode=createMode,
-            editMode=editMode,
             advancedMode=advancedMode,
             shapeLineColor=shapeLineColor,
             shapeFillColor=shapeFillColor,
@@ -338,10 +330,10 @@ class MainWindow(QMainWindow, WindowMixin):
             fileMenuActions=(openFile, openDir, save, saveAs, close, resetAll, quit),
             beginner=(),
             advanced=(),
-            editMenu=(copy, delete, None, color1, self.drawSquaresOption),
-            beginnerContext=(create, copy, delete),
-            advancedContext=(createMode, editMode, copy, delete, shapeLineColor, shapeFillColor),
-            onLoadActive=(close, create, createMode, editMode),
+            editMenu=(None, color1, self.drawSquaresOption),
+            beginnerContext=(editKeypointMode, editMatchMode),
+            advancedContext=(shapeLineColor, shapeFillColor),
+            onLoadActive=tuple(),
             onShapesPresent=(saveAs, hideAll, showAll))
 
         self.menus = struct(
@@ -392,12 +384,12 @@ class MainWindow(QMainWindow, WindowMixin):
         self.tools = self.toolbar('Tools')
         self.actions.beginner = (
             openFile, openDir, changeSavedir, openNextImg, openPrevImg,
-            verify, save, save_format, None, create, copy, delete, None,
+            verify, save, save_format, None, None,
             zoomIn, zoom, zoomOut, fitWindow, fitWidth)
 
         self.actions.advanced = (
             openFile, openDir, changeSavedir, openNextImg, openPrevImg, save, save_format, None,
-            createMode, editMode, None,
+            None,
             hideAll, showAll)
 
         self.statusBar().showMessage('%s started.' % __appname__)
@@ -540,8 +532,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.menus[0].clear()
         addActions(self.canvas.menus[0], menu)
         self.menus.edit.clear()
-        actions = (self.actions.create,) if self.beginner()\
-            else (self.actions.createMode, self.actions.editMode)
+        actions = (self.actions.editKeypointMode, self.actions.editMatchMode)
         addActions(self.menus.edit, actions + self.actions.editMenu)
 
     def setBeginner(self):
@@ -601,9 +592,6 @@ class MainWindow(QMainWindow, WindowMixin):
     def beginner(self):
         return self._beginner
 
-    def advanced(self):
-        return not self.beginner()
-
     def getAvailableScreencastViewer(self):
         osName = platform.system()
 
@@ -638,19 +626,15 @@ class MainWindow(QMainWindow, WindowMixin):
             self.canvas.restoreCursor()
             self.actions.create.setEnabled(True)
 
-    def toggleDrawMode(self, edit=True):
-        self.canvas.setEditing(edit)
-        self.actions.createMode.setEnabled(edit)
-        self.actions.editMode.setEnabled(not edit)
+    def setEditKeypointMode(self):
+        self.actions.editKeypointMode.setEnabled(False)
+        self.actions.editMatchMode.setEnabled(True)
+        self.canvas.setEditKeypointMode()
 
-    def setCreateMode(self):
-        assert self.advanced()
-        self.toggleDrawMode(False)
-
-    def setEditMode(self):
-        assert self.advanced()
-        self.toggleDrawMode(True)
-        self.labelSelectionChanged()
+    def setEditMatchMode(self):
+        self.actions.editKeypointMode.setEnabled(True)
+        self.actions.editMatchMode.setEnabled(False)
+        self.canvas.setEditMatchMode()
 
     def updateFileMenu(self):
         currFilePath = self.filePath
@@ -862,15 +846,6 @@ class MainWindow(QMainWindow, WindowMixin):
                 self.labelList.item(i).setCheckState(0)
             else:
                 self.labelList.item(i).setCheckState(2)
-
-    def labelSelectionChanged(self):
-        item = self.currentItem()
-        if item and self.canvas.editing():
-            self._noSelectionSlot = True
-            self.canvas.selectShape(self.itemsToShapes[item])
-            shape = self.itemsToShapes[item]
-            # Add Chris
-            self.diffcButton.setChecked(shape.difficult)
 
     def labelItemChanged(self, item):
         shape = self.itemsToShapes[item]
