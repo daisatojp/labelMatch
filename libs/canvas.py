@@ -336,28 +336,6 @@ class Canvas(QWidget):
                 return self.selectedShape
         return None
 
-    def calculateOffsets(self, shape, point):
-        rect = shape.boundingRect()
-        x1 = rect.x() - point.x()
-        y1 = rect.y() - point.y()
-        x2 = (rect.x() + rect.width()) - point.x()
-        y2 = (rect.y() + rect.height()) - point.y()
-        self.offsets = QPointF(x1, y1), QPointF(x2, y2)
-
-    def snapPointToCanvas(self, x, y):
-        """
-        Moves a point x,y to within the boundaries of the canvas.
-        :return: (x,y,snapped) where snapped is True if x or y were changed, False if not.
-        """
-        if x < 0 or x > self.pixmap.width() or y < 0 or y > self.pixmap.height():
-            x = max(x, 0)
-            y = max(y, 0)
-            x = min(x, self.pixmap.width())
-            y = min(y, self.pixmap.height())
-            return x, y, True
-
-        return x, y, False
-
     def boundedMoveVertex(self, pos):
         index, shape = self.hVertex, self.hShape
         point = shape[index]
@@ -423,24 +401,6 @@ class Canvas(QWidget):
             self.setHiding(False)
             self.selectionChanged.emit(False)
             self.update()
-
-    def deleteSelected(self):
-        if self.selectedShape:
-            shape = self.selectedShape
-            self.shapes.remove(self.selectedShape)
-            self.selectedShape = None
-            self.update()
-            return shape
-
-    def copySelectedShape(self):
-        if self.selectedShape:
-            shape = self.selectedShape.copy()
-            self.deSelectShape()
-            self.shapes.append(shape)
-            shape.selected = True
-            self.selectedShape = shape
-            self.boundedShiftShape(shape)
-            return shape
 
     def boundedShiftShape(self, shape):
         # Try to move in one direction, and if it fails in another.
@@ -520,10 +480,6 @@ class Canvas(QWidget):
         y = (ah - h) / (2 * s) if ah > h else 0
         return QPointF(x, y)
 
-    def outOfPixmap(self, p):
-        w, h = self.pixmap.width(), self.pixmap.height()
-        return not (0 <= p.x() <= w and 0 <= p.y() <= h)
-
     def finalise(self):
         assert self.current
         if self.current.points[0] == self.current.points[-1]:
@@ -594,35 +550,6 @@ class Canvas(QWidget):
             self.moveOnePixel('Up')
         elif key == Qt.Key_Down and self.selectedShape:
             self.moveOnePixel('Down')
-
-    def moveOnePixel(self, direction):
-        # print(self.selectedShape.points)
-        if direction == 'Left' and not self.moveOutOfBound(QPointF(-1.0, 0)):
-            # print("move Left one pixel")
-            self.selectedShape.points[0] += QPointF(-1.0, 0)
-            self.selectedShape.points[1] += QPointF(-1.0, 0)
-            self.selectedShape.points[2] += QPointF(-1.0, 0)
-            self.selectedShape.points[3] += QPointF(-1.0, 0)
-        elif direction == 'Right' and not self.moveOutOfBound(QPointF(1.0, 0)):
-            # print("move Right one pixel")
-            self.selectedShape.points[0] += QPointF(1.0, 0)
-            self.selectedShape.points[1] += QPointF(1.0, 0)
-            self.selectedShape.points[2] += QPointF(1.0, 0)
-            self.selectedShape.points[3] += QPointF(1.0, 0)
-        elif direction == 'Up' and not self.moveOutOfBound(QPointF(0, -1.0)):
-            # print("move Up one pixel")
-            self.selectedShape.points[0] += QPointF(0, -1.0)
-            self.selectedShape.points[1] += QPointF(0, -1.0)
-            self.selectedShape.points[2] += QPointF(0, -1.0)
-            self.selectedShape.points[3] += QPointF(0, -1.0)
-        elif direction == 'Down' and not self.moveOutOfBound(QPointF(0, 1.0)):
-            # print("move Down one pixel")
-            self.selectedShape.points[0] += QPointF(0, 1.0)
-            self.selectedShape.points[1] += QPointF(0, 1.0)
-            self.selectedShape.points[2] += QPointF(0, 1.0)
-            self.selectedShape.points[3] += QPointF(0, 1.0)
-        self.shapeMoved.emit()
-        self.repaint()
 
     def moveOutOfBound(self, step):
         points = [p1+p2 for p1, p2 in zip(self.selectedShape.points, [step]*4)]

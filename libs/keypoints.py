@@ -6,12 +6,14 @@ class Keypoints(object):
     def __init__(self):
         self.keypoints = []
         self.selected_idx = None
+        self.highlighted_idx = None
 
     def paint(self, painter, offset=0):
         for idx, keypoint in enumerate(self.keypoints):
             keypoint.paint(
                 painter=painter,
                 offset=offset,
+                highlighted=(idx == self.highlighted_idx),
                 selected=(idx == self.selected_idx))
 
     def append(self, x, y):
