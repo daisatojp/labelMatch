@@ -1,6 +1,6 @@
-import pickle
 import os
 import sys
+import pickle
 
 
 class Settings(object):
@@ -41,6 +41,5 @@ class Settings(object):
     def reset(self):
         if os.path.exists(self.path):
             os.remove(self.path)
-            print('Remove setting pkl file ${0}'.format(self.path))
         self.data = {}
         self.path = None

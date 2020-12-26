@@ -61,15 +61,11 @@ class MainWindow(QMainWindow, WindowMixin):
         super(MainWindow, self).__init__()
         self.setWindowTitle(__appname__)
 
-        # annotation file
-        self.matching = None
-
-        # Load setting in the main thread
         self.settings = Settings()
         self.settings.load()
-        settings = self.settings
 
-        # Load string bundle for i18n
+        self.matching = None
+
         self.stringBundle = StringBundle.getBundle()
         getStr = lambda strId: self.stringBundle.getString(strId)
 
@@ -126,7 +122,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.canvas = Canvas(parent=self)
         self.canvas.zoomRequest.connect(self.zoomRequest)
-        self.canvas.setDrawingShapeToSquare(settings.get(SETTING_DRAW_SQUARE, False))
+        self.canvas.setDrawingShapeToSquare(self.settings.get(SETTING_DRAW_SQUARE, False))
 
         scroll = QScrollArea()
         scroll.setWidget(self.canvas)
@@ -263,7 +259,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.autoSaving = QAction(getStr('autoSaveMode'), self)
         self.autoSaving.setCheckable(True)
-        self.autoSaving.setChecked(settings.get(SETTING_AUTO_SAVE, False))
+        self.autoSaving.setChecked(self.settings.get(SETTING_AUTO_SAVE, False))
 
         addActions(
             self.menus.file,
@@ -297,16 +293,16 @@ class MainWindow(QMainWindow, WindowMixin):
         self.fit_window = False
 
         ## Fix the compatible issue for qt4 and qt5. Convert the QStringList to python list
-        if settings.get(SETTING_RECENT_FILES):
+        if self.settings.get(SETTING_RECENT_FILES):
             if have_qstring():
-                recentFileQStringList = settings.get(SETTING_RECENT_FILES)
+                recentFileQStringList = self.settings.get(SETTING_RECENT_FILES)
                 self.recentFiles = [ustr(i) for i in recentFileQStringList]
             else:
                 self.recentFiles = recentFileQStringList = settings.get(SETTING_RECENT_FILES)
 
-        size = settings.get(SETTING_WIN_SIZE, QSize(600, 500))
+        size = self.settings.get(SETTING_WIN_SIZE, QSize(600, 500))
         position = QPoint(0, 0)
-        saved_position = settings.get(SETTING_WIN_POSE, position)
+        saved_position = self.settings.get(SETTING_WIN_POSE, position)
         # Fix the multiple monitors issue
         for i in range(QApplication.desktop().screenCount()):
             if QApplication.desktop().availableGeometry(i).contains(saved_position):
@@ -314,17 +310,17 @@ class MainWindow(QMainWindow, WindowMixin):
                 break
         self.resize(size)
         self.move(position)
-        saveDir = ustr(settings.get(SETTING_SAVE_DIR, None))
-        self.lastOpenDir = ustr(settings.get(SETTING_LAST_OPEN_DIR, None))
+        saveDir = ustr(self.settings.get(SETTING_SAVE_DIR, None))
+        self.lastOpenDir = ustr(self.settings.get(SETTING_LAST_OPEN_DIR, None))
 
-        self.restoreState(settings.get(SETTING_WIN_STATE, QByteArray()))
+        self.restoreState(self.settings.get(SETTING_WIN_STATE, QByteArray()))
 
         def xbool(x):
             if isinstance(x, QVariant):
                 return x.toBool()
             return bool(x)
 
-        if xbool(settings.get(SETTING_ADVANCE_MODE, False)):
+        if xbool(self.settings.get(SETTING_ADVANCE_MODE, False)):
             self.actions.advancedMode.setChecked(True)
             self.toggleAdvancedMode()
 
@@ -373,9 +369,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.itemsToShapes.clear()
         self.shapesToItems.clear()
         self.labelList.clear()
-        self.filePath = None
-        self.imageData = None
-        self.labelFile = None
+        self.imageDir = None
+        self.savePath = None
         self.canvas.resetState()
         self.labelCoordinates.clear()
         self.comboBox.cb.clear()
@@ -454,8 +449,8 @@ class MainWindow(QMainWindow, WindowMixin):
         idx_view_j = self.get_idx_view(id_view_j)
         self.fileListWidgetI.setCurrentRow(idx_view_i)
         self.fileListWidgetJ.setCurrentRow(idx_view_j)
-        img_i = cv2.imread(osp.join(self.imageDir, self.matching['views'][idx_view_i]['filename']))
-        img_j = cv2.imread(osp.join(self.imageDir, self.matching['views'][idx_view_j]['filename']))
+        img_i = cv2.imread(osp.join(self.imageDir, osp.join(*self.matching['views'][idx_view_i]['filename'])))
+        img_j = cv2.imread(osp.join(self.imageDir, osp.join(*self.matching['views'][idx_view_j]['filename'])))
         self.img_i_h, self.img_i_w, _ = img_i.shape
         self.img_j_h, self.img_j_w, _ = img_j.shape
         # set image
@@ -683,36 +678,27 @@ class MainWindow(QMainWindow, WindowMixin):
     def closeEvent(self, event):
         if not self.mayContinue():
             event.ignore()
-        settings = self.settings
-        # If it loads images from dir, don't load it at the begining
-        if self.dirname is None:
-            settings[SETTING_FILENAME] = self.filePath if self.filePath else ''
-        else:
-            settings[SETTING_FILENAME] = ''
-
-        settings[SETTING_WIN_SIZE] = self.size()
-        settings[SETTING_WIN_POSE] = self.pos()
-        settings[SETTING_WIN_STATE] = self.saveState()
-        settings[SETTING_LINE_COLOR] = self.lineColor
-        settings[SETTING_FILL_COLOR] = self.fillColor
-        settings[SETTING_RECENT_FILES] = self.recentFiles
-        settings[SETTING_ADVANCE_MODE] = not self._beginner
+        self.settings[SETTING_WIN_SIZE] = self.size()
+        self.settings[SETTING_WIN_POSE] = self.pos()
+        self.settings[SETTING_WIN_STATE] = self.saveState()
+        self.settings[SETTING_LINE_COLOR] = self.lineColor
+        self.settings[SETTING_FILL_COLOR] = self.fillColor
+        self.settings[SETTING_RECENT_FILES] = self.recentFiles
+        self.settings[SETTING_ADVANCE_MODE] = not self._beginner
         if self.defaultSaveDir and os.path.exists(self.defaultSaveDir):
-            settings[SETTING_SAVE_DIR] = ustr(self.defaultSaveDir)
+            self.settings[SETTING_SAVE_DIR] = ustr(self.defaultSaveDir)
         else:
-            settings[SETTING_SAVE_DIR] = ''
-
+            self.settings[SETTING_SAVE_DIR] = ''
         if self.lastOpenDir and os.path.exists(self.lastOpenDir):
-            settings[SETTING_LAST_OPEN_DIR] = self.lastOpenDir
+            self.settings[SETTING_LAST_OPEN_DIR] = self.lastOpenDir
         else:
-            settings[SETTING_LAST_OPEN_DIR] = ''
-
-        settings[SETTING_AUTO_SAVE] = self.autoSaving.isChecked()
-        settings[SETTING_SINGLE_CLASS] = self.singleClassMode.isChecked()
-        settings[SETTING_PAINT_LABEL] = self.displayLabelOption.isChecked()
-        settings[SETTING_DRAW_SQUARE] = self.drawSquaresOption.isChecked()
-        settings[SETTING_LABEL_FILE_FORMAT] = self.labelFileFormat
-        settings.save()
+            self.settings[SETTING_LAST_OPEN_DIR] = ''
+        self.settings[SETTING_AUTO_SAVE] = self.autoSaving.isChecked()
+        self.settings[SETTING_SINGLE_CLASS] = self.singleClassMode.isChecked()
+        self.settings[SETTING_PAINT_LABEL] = self.displayLabelOption.isChecked()
+        self.settings[SETTING_DRAW_SQUARE] = self.drawSquaresOption.isChecked()
+        self.settings[SETTING_LABEL_FILE_FORMAT] = self.labelFileFormat
+        self.settings.save()
 
     def openImageDir(self, _value=False):
         if self.imageDir and os.path.exists(self.imageDir):
@@ -735,7 +721,7 @@ class MainWindow(QMainWindow, WindowMixin):
         image_paths = self._scan_all_images(self.imageDir)
         for i in range(len(image_paths)):
             for j in range(i + 1, len(image_paths)):
-                x['matches'].append([i, j])
+                x['valid_pairs'].append([i, j])
         for i, image_path in enumerate(image_paths):
             x['views'].append({
                 'id_view': i,
@@ -746,13 +732,18 @@ class MainWindow(QMainWindow, WindowMixin):
     def openFile(self, _value=False):
         if not self.mayContinue():
             return
-        path = osp.dirname(ustr(self.filePath)) if self.filePath else '.'
+        path = osp.dirname(ustr(self.savePath)) if self.savePath else '.'
         filters = 'matching file (*.json)'
-        filename = QFileDialog.getOpenFileName(self, '%s - Choose matching file' % __appname__, path, filters)
+        filename = QFileDialog.getOpenFileName(
+            self, 'choose matching file', path, filters)
         if filename:
             if isinstance(filename, (tuple, list)):
                 filename = filename[0]
-            self.loadFile(filename)
+            if osp.exists(filename):
+                self.loadFile(filename)
+            else:
+                QMessageBox.warning(self, 'Attention', 'File Not Found', QMessageBox.Ok)
+                return
 
     def saveFile(self, _value=False):
         if self.savePath:
