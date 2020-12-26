@@ -647,85 +647,6 @@ class MainWindow(QMainWindow, WindowMixin):
         id_view_j = self.matching['valid_pairs'][0][1]
         self.changePair(id_view_i, id_view_j)
 
-    def loadFile(self, filePath=None):
-        """Load the specified file, or the last opened file if None."""
-        self.resetState()
-        self.canvas.setEnabled(False)
-        if filePath is None:
-            filePath = self.settings.get(SETTING_FILENAME)
-
-        # Make sure that filePath is a regular python string, rather than QString
-        filePath = ustr(filePath)
-
-        # Fix bug: An  index error after select a directory when open a new file.
-        unicodeFilePath = ustr(filePath)
-        unicodeFilePath = os.path.abspath(unicodeFilePath)
-        # Tzutalin 20160906 : Add file list and dock to move faster
-        # Highlight the file item
-        if unicodeFilePath and self.fileListWidget.count() > 0:
-            if unicodeFilePath in self.mImgList:
-                index = self.mImgList.index(unicodeFilePath)
-                fileWidgetItem = self.fileListWidget.item(index)
-                fileWidgetItem.setSelected(True)
-            else:
-                self.fileListWidget.clear()
-                self.mImgList.clear()
-
-        if unicodeFilePath and os.path.exists(unicodeFilePath):
-            if LabelFile.isLabelFile(unicodeFilePath):
-                try:
-                    self.labelFile = LabelFile(unicodeFilePath)
-                except LabelFileError as e:
-                    self.errorMessage(u'Error opening file',
-                                      (u"<p><b>%s</b></p>"
-                                       u"<p>Make sure <i>%s</i> is a valid label file.")
-                                      % (e, unicodeFilePath))
-                    self.status("Error reading %s" % unicodeFilePath)
-                    return False
-                self.imageData = self.labelFile.imageData
-                self.lineColor = QColor(*self.labelFile.lineColor)
-                self.fillColor = QColor(*self.labelFile.fillColor)
-                self.canvas.verified = self.labelFile.verified
-            else:
-                # Load image:
-                # read data first and store for saving into label file.
-                self.imageData = read(unicodeFilePath, None)
-                self.labelFile = None
-                self.canvas.verified = False
-
-            if isinstance(self.imageData, QImage):
-                image = self.imageData
-            else:
-                image = QImage.fromData(self.imageData)
-            if image.isNull():
-                self.errorMessage(u'Error opening file',
-                                  u"<p>Make sure <i>%s</i> is a valid image file." % unicodeFilePath)
-                self.status("Error reading %s" % unicodeFilePath)
-                return False
-            self.status("Loaded %s" % os.path.basename(unicodeFilePath))
-            self.image = image
-            self.filePath = unicodeFilePath
-            self.canvas.loadPixmap(QPixmap.fromImage(image))
-            if self.labelFile:
-                self.loadLabels(self.labelFile.shapes)
-            self.setClean()
-            self.canvas.setEnabled(True)
-            self.adjustScale(initial=True)
-            self.paintCanvas()
-            self.addRecentFile(self.filePath)
-            self.toggleActions(True)
-
-            self.setWindowTitle(__appname__ + ' ' + filePath)
-
-            # Default : select last item if there is at least one item
-            if self.labelList.count():
-                self.labelList.setCurrentItem(self.labelList.item(self.labelList.count()-1))
-                self.labelList.item(self.labelList.count()-1).setSelected(True)
-
-            self.canvas.setFocus(True)
-            return True
-        return False
-
     def resizeEvent(self, event):
         if self.canvas and not self.image.isNull()\
            and self.zoomMode != self.MANUAL_ZOOM:
@@ -793,23 +714,6 @@ class MainWindow(QMainWindow, WindowMixin):
         settings[SETTING_LABEL_FILE_FORMAT] = self.labelFileFormat
         settings.save()
 
-    def loadRecent(self, filename):
-        if self.mayContinue():
-            self.loadFile(filename)
-
-    def scanAllImages(self, folderPath):
-        extensions = ['.%s' % fmt.data().decode("ascii").lower() for fmt in QImageReader.supportedImageFormats()]
-        images = []
-
-        for root, dirs, files in os.walk(folderPath):
-            for file in files:
-                if file.lower().endswith(tuple(extensions)):
-                    relativePath = os.path.join(root, file)
-                    path = ustr(os.path.abspath(relativePath))
-                    images.append(path)
-        natural_sort(images, key=lambda x: x.lower())
-        return images
-
     def openImageDir(self, _value=False):
         if self.imageDir and os.path.exists(self.imageDir):
             defaultDir = self.imageDir
@@ -821,10 +725,23 @@ class MainWindow(QMainWindow, WindowMixin):
                 QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks))
 
     def newFile(self, _value=False):
+        if not self.imageDir:
+            QMessageBox.warning(self, 'Attention', 'First of all, you need to select image directory', QMessageBox.Ok)
+            return
         if not self.mayContinue():
             return
-        filename = self.newFileDialog.popUp()
-        print(filename)
+        filePath = self.newFileDialog.popUp()
+        x = {'matches': [], 'valid_pairs': [], 'views': []}
+        image_paths = self._scan_all_images(self.imageDir)
+        for i in range(len(image_paths)):
+            for j in range(i + 1, len(image_paths)):
+                x['matches'].append([i, j])
+        for i, image_path in enumerate(image_paths):
+            x['views'].append({
+                'id_view': i,
+                'filename': image_path[len(self.imageDir) + len(os.sep):].split(os.sep),
+                'keypoints': []})
+        self._save_file(x, filePath)
 
     def openFile(self, _value=False):
         if not self.mayContinue():
@@ -849,7 +766,7 @@ class MainWindow(QMainWindow, WindowMixin):
         if self.autoSaving.isChecked():
             if self.dirty is True:
                 if self.savePath:
-                    self._saveFile(self.savePath)
+                    self._save_file(obj, self.savePath)
         if not self.mayContinue():
             return
 
@@ -857,13 +774,27 @@ class MainWindow(QMainWindow, WindowMixin):
         if self.autoSaving.isChecked():
             if self.dirty is True:
                 if self.savePath:
-                    self._saveFile(self.savePath)
+                    self._save_file(obj, self.savePath)
         if not self.mayContinue():
             return
 
-    def _saveFile(self, path):
+    @staticmethod
+    def _save_file(obj, path):
         with open(path, 'w') as f:
-            json.dump(self.matching, f)
+            json.dump(obj, f)
+
+    @staticmethod
+    def _scan_all_images(root_dir):
+        extensions = ['.jpg', '.JPG']
+        image_paths = []
+        for root, dirs, files in os.walk(root_dir):
+            for file in files:
+                if file.lower().endswith(tuple(extensions)):
+                    relativePath = os.path.join(root, file)
+                    path = ustr(os.path.abspath(relativePath))
+                    image_paths.append(path)
+        natural_sort(image_paths, key=lambda x: x.lower())
+        return image_paths
 
     def mayContinue(self):
         if not self.dirty:

@@ -12,7 +12,6 @@ class NewFileDialog(QDialog):
     def __init__(self, parent=None):
         super(NewFileDialog, self).__init__(parent)
 
-        self.editImageDir = QLineEdit()
         self.editMatchingFile = QLineEdit()
 
         self.buttonBox = bb = BB(BB.Ok | BB.Cancel, Qt.Horizontal, self)
@@ -22,13 +21,11 @@ class NewFileDialog(QDialog):
         bb.rejected.connect(self.reject)
 
         layout = QVBoxLayout()
-        layout.addWidget(self.editImageDir)
         layout.addWidget(self.editMatchingFile)
         layout.addWidget(bb)
 
         self.setLayout(layout)
 
     def popUp(self, text='', move=True):
-        self.editImageDir.setText('')
         self.editMatchingFile.setText('')
-        return self.editImageDir.text() if self.exec_() else None
+        return self.editMatchingFile.text() if self.exec_() else None
