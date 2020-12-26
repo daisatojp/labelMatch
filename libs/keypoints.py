@@ -27,3 +27,15 @@ class Keypoints(object):
 
     def select(self, idx):
         self.selected_idx = idx
+
+    def is_highlited(self):
+        if self.highlighted_idx is not None:
+            return True
+        else:
+            return False
+
+    def is_selected(self):
+        if self.selected_idx is not None:
+            return True
+        else:
+            return False

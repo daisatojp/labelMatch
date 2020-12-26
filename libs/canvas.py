@@ -205,7 +205,8 @@ class Canvas(QWidget):
 
         if self.mode == self.MODE_EDIT_KEYPOINT:
             if ev.button() == Qt.LeftButton:
-                pass
+                if self.IsInViewI(pos.x(), pos.y()):
+                    if self.keypoints_i
 
         if ev.button() == Qt.LeftButton:
             if self.drawing():
@@ -253,13 +254,16 @@ class Canvas(QWidget):
         self.mode = self.MODE_EDIT_MATCH
 
     def IsInViewI(self, x, y):
-        if 0 <= x < y < self.offset:
+        if 0 <= x <= self.view_i_w and 0 <= y < self.view_i_h:
             return True
         else:
             return False
 
     def IsInViewJ(self, x, y):
-        pass
+        if 0 <= x <= self.view_j_w and self.view_i_h <= y < self.view_i_h + self.view_j_h:
+            return True
+        else:
+            return False
 
     def endMove(self, copy=False):
         assert self.selectedShape and self.selectedShapeCopy
