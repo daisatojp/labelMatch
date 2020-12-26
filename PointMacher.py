@@ -17,7 +17,6 @@ from collections import defaultdict
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from libs.combobox import ComboBox
 # from libs.resources import *
 from libs.constants import *
 from libs.utils import *
@@ -27,7 +26,6 @@ from libs.stringBundle import StringBundle
 from libs.canvas import Canvas
 from libs.zoomWidget import ZoomWidget
 from libs.newFileDialog import NewFileDialog
-from libs.colorDialog import ColorDialog
 from libs.toolBar import ToolBar
 from libs.ustr import ustr
 from libs.hashableQListWidgetItem import HashableQListWidgetItem
@@ -80,10 +78,6 @@ class MainWindow(QMainWindow, WindowMixin):
         listLayout = QVBoxLayout()
         listLayout.setContentsMargins(0, 0, 0, 0)
 
-        # Create and add combobox for showing unique labels in group
-        self.comboBox = ComboBox(self)
-        listLayout.addWidget(self.comboBox)
-
         self.pairListWidget = QListWidget()
         self.pairListWidget.itemDoubleClicked.connect(self.pairitemDoubleClicked)
         pairlistLayout = QVBoxLayout()
@@ -117,9 +111,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.filedockJ.setObjectName(getStr('files'))
         self.filedockJ.setWidget(fileListContainerJ)
 
-        self.zoomWidget = ZoomWidget()
-        self.colorDialog = ColorDialog(parent=self)
-
         self.canvas = Canvas(parent=self)
         self.canvas.zoomRequest.connect(self.zoomRequest)
         self.canvas.setDrawingShapeToSquare(self.settings.get(SETTING_DRAW_SQUARE, False))
@@ -148,6 +139,7 @@ class MainWindow(QMainWindow, WindowMixin):
         # Actions
         action = partial(newAction, self)
 
+        # File menu
         openDir = action(
             getStr('openDir'), self.openImageDir,
             'Ctrl+u', 'open', getStr('openDirDetail'))
@@ -173,6 +165,29 @@ class MainWindow(QMainWindow, WindowMixin):
             getStr('openPrevPair'), self.openPrevPair,
             'a', 'prev', getStr('openPrevPairDetail'))
 
+        # View menu
+        self.autoSaving = QAction(getStr('autoSaveMode'), self)
+        self.autoSaving.setCheckable(True)
+        self.autoSaving.setChecked(self.settings.get(SETTING_AUTO_SAVE, False))
+        zoomIn = action(
+            getStr('zoomIn'), partial(self.addZoom, 10),
+            'Ctrl++', 'zoom-in', getStr('zoomInDetail'), enabled=False)
+        zoomOut = action(
+            getStr('zoomOut'), partial(self.addZoom, -10),
+            'Ctrl+-', 'zoom-out', getStr('zoomOutDetail'), enabled=False)
+        zoomOrg = action(
+            getStr('zoomOrgSize'), partial(self.setZoom, 100),
+            'Ctrl+=', 'zoom', getStr('zoomOrgSizeDetail'), enabled=False)
+        fitWindow = action(
+            getStr('fitWindow'), self.setFitWindow,
+            'Ctrl+F', 'fit-window', getStr('fitWindowDetail'),
+            checkable=True, enabled=False)
+        fitWidth = action(
+            getStr('fitWidth'), self.setFitWidth,
+            'Ctrl+Shift+F', 'fit-width', getStr('fitWidthDetail'),
+            checkable=True, enabled=False)
+
+        # Edit menu
         editKeypointMode = action(
             getStr('editKeypoint'), self.setEditKeypointMode,
             'v', 'new', getStr('editKeypointDetail'), enabled=True)
@@ -180,52 +195,24 @@ class MainWindow(QMainWindow, WindowMixin):
             getStr('editMatch'), self.setEditMatchMode,
             'e', 'edit', u'Move and edit Boxs', enabled=False)
 
+        # Help Menu
         showInfo = action(
-            getStr('info'), self.showInfoDialog,
-            None, 'help', getStr('info'))
+            getStr('showInfo'), self.showInfoDialog,
+            None, 'help', getStr('showInfoDetail'))
 
+        self.zoomWidget = ZoomWidget()
         zoom = QWidgetAction(self)
         zoom.setDefaultWidget(self.zoomWidget)
         self.zoomWidget.setWhatsThis(
-            u"Zoom in or out of the image. Also accessible with"
-            " %s and %s from the canvas." % (fmtShortcut("Ctrl+[-+]"),
-                                             fmtShortcut("Ctrl+Wheel")))
+            'Zoom in or out of the image. Also accessible with {} and {} from the canvas.'.format(
+                fmtShortcut('Ctrl+[-+]'), fmtShortcut('Ctrl+Wheel')))
         self.zoomWidget.setEnabled(False)
-
-        zoomIn = action(
-            getStr('zoomin'), partial(self.addZoom, 10),
-            'Ctrl++', 'zoom-in', getStr('zoominDetail'), enabled=False)
-        zoomOut = action(
-            getStr('zoomout'), partial(self.addZoom, -10),
-            'Ctrl+-', 'zoom-out', getStr('zoomoutDetail'), enabled=False)
-        zoomOrg = action(
-            getStr('originalsize'), partial(self.setZoom, 100),
-            'Ctrl+=', 'zoom', getStr('originalsizeDetail'), enabled=False)
-        fitWindow = action(
-            getStr('fitWin'), self.setFitWindow,
-            'Ctrl+F', 'fit-window', getStr('fitWinDetail'),
-            checkable=True, enabled=False)
-        fitWidth = action(
-            getStr('fitWidth'), self.setFitWidth,
-            'Ctrl+Shift+F', 'fit-width', getStr('fitWidthDetail'),
-            checkable=True, enabled=False)
-        # Group zoom controls into a list for easier toggling.
-        zoomActions = (self.zoomWidget, zoomIn, zoomOut,
-                       zoomOrg, fitWindow, fitWidth)
         self.zoomMode = self.MANUAL_ZOOM
         self.scalers = {
             self.FIT_WINDOW: self.scaleFitWindow,
             self.FIT_WIDTH: self.scaleFitWidth,
             # Set to one to scale to 100% when loading files.
-            self.MANUAL_ZOOM: lambda: 1,
-        }
-
-        shapeLineColor = action(getStr('shapeLineColor'), self.chshapeLineColor,
-                                icon='color_line', tip=getStr('shapeLineColorDetail'),
-                                enabled=False)
-        shapeFillColor = action(getStr('shapeFillColor'), self.chshapeFillColor,
-                                icon='color', tip=getStr('shapeFillColorDetail'),
-                                enabled=False)
+            self.MANUAL_ZOOM: lambda: 1}
 
         self.newFileDialog = NewFileDialog(self)
 
@@ -238,15 +225,12 @@ class MainWindow(QMainWindow, WindowMixin):
             closeFile=closeFile,
             editKeypointMode=editKeypointMode,
             editMatchMode=editMatchMode,
-            shapeLineColor=shapeLineColor,
-            shapeFillColor=shapeFillColor,
             zoom=zoom,
             zoomIn=zoomIn,
             zoomOut=zoomOut,
             zoomOrg=zoomOrg,
             fitWindow=fitWindow,
             fitWidth=fitWidth,
-            zoomActions=zoomActions,
             fileMenuActions=(openDir, newFile, openFile, saveFile, closeFile, quitApp),
             editMenu=tuple(),
             onLoadActive=tuple())
@@ -257,10 +241,7 @@ class MainWindow(QMainWindow, WindowMixin):
             view=self.menu('&View'),
             help=self.menu('&Help'))
 
-        self.autoSaving = QAction(getStr('autoSaveMode'), self)
-        self.autoSaving.setCheckable(True)
-        self.autoSaving.setChecked(self.settings.get(SETTING_AUTO_SAVE, False))
-
+        # setup menus
         addActions(
             self.menus.file,
             (openDir, newFile, openFile, saveFile, closeFile, quitApp))
@@ -268,14 +249,15 @@ class MainWindow(QMainWindow, WindowMixin):
             self.menus.edit,
             (editKeypointMode, editMatchMode))
         addActions(
-            self.menus.help,
-            (showInfo,))
-        addActions(
             self.menus.view,
             (self.autoSaving, None,
              zoomIn, zoomOut, zoomOrg, None,
              fitWindow, fitWidth))
+        addActions(
+            self.menus.help,
+            (showInfo,))
 
+        # setup tools
         self.tools = self.toolbar('Tools')
         addActions(
             self.tools,
@@ -291,14 +273,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.maxRecent = 7
         self.zoom_level = 100
         self.fit_window = False
-
-        ## Fix the compatible issue for qt4 and qt5. Convert the QStringList to python list
-        if self.settings.get(SETTING_RECENT_FILES):
-            if have_qstring():
-                recentFileQStringList = self.settings.get(SETTING_RECENT_FILES)
-                self.recentFiles = [ustr(i) for i in recentFileQStringList]
-            else:
-                self.recentFiles = recentFileQStringList = settings.get(SETTING_RECENT_FILES)
 
         size = self.settings.get(SETTING_WIN_SIZE, QSize(600, 500))
         position = QPoint(0, 0)
@@ -340,30 +314,11 @@ class MainWindow(QMainWindow, WindowMixin):
             # Draw rectangle if Ctrl is pressed
             self.canvas.setDrawingShapeToSquare(True)
 
-    def noShapes(self):
-        return not self.itemsToShapes
-
     def setDirty(self):
         self.dirty = True
-        self.actions.save.setEnabled(True)
 
     def setClean(self):
         self.dirty = False
-        self.actions.save.setEnabled(False)
-        self.actions.create.setEnabled(True)
-
-    def toggleActions(self, value=True):
-        """Enable/Disable widgets which depend on an opened image."""
-        for z in self.actions.zoomActions:
-            z.setEnabled(value)
-        for action in self.actions.onLoadActive:
-            action.setEnabled(value)
-
-    def queueEvent(self, function):
-        QTimer.singleShot(0, function)
-
-    def status(self, message, delay=5000):
-        self.statusBar().showMessage(message, delay)
 
     def resetState(self):
         self.itemsToShapes.clear()
@@ -374,19 +329,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.resetState()
         self.labelCoordinates.clear()
         self.comboBox.cb.clear()
-
-    def currentItem(self):
-        items = self.labelList.selectedItems()
-        if items:
-            return items[0]
-        return None
-
-    def addRecentFile(self, filePath):
-        if filePath in self.recentFiles:
-            self.recentFiles.remove(filePath)
-        elif len(self.recentFiles) >= self.maxRecent:
-            self.recentFiles.pop()
-        self.recentFiles.insert(0, filePath)
 
     def showInfoDialog(self):
         from libs.__init__ import __version__
@@ -477,37 +419,6 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def get_idx_view(self, id_view):
         return [v['id_view'] == id_view for v in self.matching['views']].index(True)
-
-    def updateComboBox(self):
-        # Get the unique labels and add them to the Combobox.
-        itemsTextList = [str(self.labelList.item(i).text()) for i in range(self.labelList.count())]
-
-        uniqueTextList = list(set(itemsTextList))
-        # Add a null row for showing all the labels
-        uniqueTextList.append("")
-        uniqueTextList.sort()
-
-        self.comboBox.update_items(uniqueTextList)
-
-    def comboSelectionChanged(self, index):
-        text = self.comboBox.cb.itemText(index)
-        for i in range(self.labelList.count()):
-            if text == "":
-                self.labelList.item(i).setCheckState(2)
-            elif text != self.labelList.item(i).text():
-                self.labelList.item(i).setCheckState(0)
-            else:
-                self.labelList.item(i).setCheckState(2)
-
-    def labelItemChanged(self, item):
-        shape = self.itemsToShapes[item]
-        label = item.text()
-        if label != shape.label:
-            shape.label = item.text()
-            shape.line_color = generateColorByText(shape.label)
-            self.setDirty()
-        else:  # User probably changed item visibility
-            self.canvas.setShapeVisible(shape, item.checkState() == Qt.Checked)
 
     # Callback functions:
     def newShape(self):
@@ -804,68 +715,6 @@ class MainWindow(QMainWindow, WindowMixin):
         yes, no, cancel = QMessageBox.Yes, QMessageBox.No, QMessageBox.Cancel
         msg = u'You have unsaved changes, would you like to save them and proceed?'
         return QMessageBox.warning(self, u'Attention', msg, yes | no | cancel)
-
-    def errorMessage(self, title, message):
-        return QMessageBox.critical(self, title,
-                                    '<p><b>%s</b></p>%s' % (title, message))
-
-    def currentPath(self):
-        return os.path.dirname(self.filePath) if self.filePath else '.'
-
-    def chooseColor1(self):
-        color = self.colorDialog.getColor(self.lineColor, u'Choose line color',
-                                          default=DEFAULT_LINE_COLOR)
-        if color:
-            self.lineColor = color
-            Shape.line_color = color
-            self.canvas.setDrawingColor(color)
-            self.canvas.update()
-            self.setDirty()
-
-    def deleteSelectedShape(self):
-        self.remLabel(self.canvas.deleteSelected())
-        self.setDirty()
-        if self.noShapes():
-            for action in self.actions.onShapesPresent:
-                action.setEnabled(False)
-
-    def chshapeLineColor(self):
-        color = self.colorDialog.getColor(self.lineColor, u'Choose line color',
-                                          default=DEFAULT_LINE_COLOR)
-        if color:
-            self.canvas.selectedShape.line_color = color
-            self.canvas.update()
-            self.setDirty()
-
-    def chshapeFillColor(self):
-        color = self.colorDialog.getColor(self.fillColor, u'Choose fill color',
-                                          default=DEFAULT_FILL_COLOR)
-        if color:
-            self.canvas.selectedShape.fill_color = color
-            self.canvas.update()
-            self.setDirty()
-
-    def copyShape(self):
-        self.canvas.endMove(copy=True)
-        self.addLabel(self.canvas.selectedShape)
-        self.setDirty()
-
-    def moveShape(self):
-        self.canvas.endMove(copy=False)
-        self.setDirty()
-
-    def togglePaintLabelsOption(self):
-        for shape in self.canvas.shapes:
-            shape.paintLabel = self.displayLabelOption.isChecked()
-
-
-def read(filename, default=None):
-    try:
-        reader = QImageReader(filename)
-        reader.setAutoTransform(True)
-        return reader.read()
-    except:
-        return default
 
 
 def get_main_app(argv=[]):
