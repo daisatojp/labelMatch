@@ -30,7 +30,10 @@ class Canvas(QWidget):
         self.keypoints_i = None
         self.keypoints_j = None
         self.matches = []
-        self.offset = 0
+        self.view_i_w = None
+        self.view_i_h = None
+        self.view_j_w = None
+        self.view_j_h = None
         self.current = None
         self.selectedShape = None  # save the selected shape here
         self.selectedShapeCopy = None
@@ -58,10 +61,6 @@ class Canvas(QWidget):
         #initialisation for panning
         self.pan_initial_pos = QPoint()
 
-    def setDrawingColor(self, qColor):
-        self.drawingLineColor = qColor
-        self.drawingRectColor = qColor
-
     def enterEvent(self, ev):
         self.overrideCursor(self._cursor)
 
@@ -84,14 +83,6 @@ class Canvas(QWidget):
             self.deSelectShape()
         self.prevPoint = QPointF()
         self.repaint()
-
-    def unHighlight(self):
-        if self.hShape:
-            self.hShape.highlightClear()
-        self.hVertex = self.hShape = None
-
-    def selectedVertex(self):
-        return self.hVertex is not None
 
     def mouseMoveEvent(self, ev):
         pos = self.transformPos(ev.pos())
@@ -212,6 +203,10 @@ class Canvas(QWidget):
     def mousePressEvent(self, ev):
         pos = self.transformPos(ev.pos())
 
+        if self.mode == self.MODE_EDIT_KEYPOINT:
+            if ev.button() == Qt.LeftButton:
+                pass
+
         if ev.button() == Qt.LeftButton:
             if self.drawing():
                 self.handleDrawing(pos)
@@ -256,6 +251,15 @@ class Canvas(QWidget):
 
     def setEditMatchMode(self):
         self.mode = self.MODE_EDIT_MATCH
+
+    def IsInViewI(self, x, y):
+        if 0 <= x < y < self.offset:
+            return True
+        else:
+            return False
+
+    def IsInViewJ(self, x, y):
+        pass
 
     def endMove(self, copy=False):
         assert self.selectedShape and self.selectedShapeCopy
@@ -427,7 +431,7 @@ class Canvas(QWidget):
         if self.keypoints_i:
             self.keypoints_i.paint(p)
         if self.keypoints_j:
-            self.keypoints_j.paint(p, self.offset)
+            self.keypoints_j.paint(p, self.view_i_h)
 
         if self.current:
             self.current.paint(p)
@@ -562,13 +566,6 @@ class Canvas(QWidget):
 
         return self.shapes[-1]
 
-    def undoLastLine(self):
-        assert self.shapes
-        self.current = self.shapes.pop()
-        self.current.setOpen()
-        self.line.points = [self.current[-1], self.current[0]]
-        self.drawingPolygon.emit(True)
-
     def resetAllLines(self):
         assert self.shapes
         self.current = self.shapes.pop()
@@ -591,8 +588,11 @@ class Canvas(QWidget):
     def setMatches(self, matches):
         self.matches = matches
 
-    def setOffset(self, offset):
-        self.offset = offset
+    def setViewSize(self, view_i_w, view_i_h, view_j_w, view_j_h):
+        self.view_i_w = view_i_w
+        self.view_i_h = view_i_h
+        self.view_j_w = view_j_w
+        self.view_j_h = view_j_h
 
     def setShapeVisible(self, shape, value):
         self.visible[shape] = value

@@ -362,9 +362,9 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def pairitemDoubleClicked(self, item=None):
         idx = self.pairListWidget.currentIndex().row()
-        if idx < len(self.matching['valid_pairs']):
-            id_view_i = self.matching['valid_pairs'][idx][0]
-            id_view_j = self.matching['valid_pairs'][idx][1]
+        if idx < len(self.matching['matches']):
+            id_view_i = self.matching['matches'][idx]['id_view_i']
+            id_view_j = self.matching['matches'][idx]['id_view_j']
             self.changePair(id_view_i, id_view_j)
 
     def fileitemDoubleClickedI(self, item=None):
@@ -378,9 +378,9 @@ class MainWindow(QMainWindow, WindowMixin):
         self.changePair(id_view_i, id_view_j)
 
     def changePair(self, id_view_i, id_view_j):
-        if len(self.matching['valid_pairs']) < self.pairListWidget.count():
+        if len(self.matching['matches']) < self.pairListWidget.count():
             self.pairListWidget.takeItem(self.pairListWidget.count()-1)
-        m = [p == [id_view_i, id_view_j] for p in self.matching['valid_pairs']]
+        m = [[x['id_view_i'], x['id_view_j']] == [id_view_i, id_view_j] for x in self.matching['matches']]
         if any(m):
             idx = m.index(True)
             self.pairListWidget.setCurrentRow(idx)
@@ -414,7 +414,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.setKeypoints_i(keypoints_i)
         self.canvas.setKeypoints_j(keypoints_j)
         # set offset
-        self.canvas.setOffset(self.img_i_h)
+        self.canvas.setViewSize(self.img_i_w, self.img_i_h, self.img_j_w, self.img_j_h)
         self.canvas.repaint()
 
     def get_idx_view(self, id_view):
@@ -544,13 +544,13 @@ class MainWindow(QMainWindow, WindowMixin):
         self.pairListWidget.clear()
         self.fileListWidgetI.clear()
         self.fileListWidgetJ.clear()
-        for valid_pair in self.matching['valid_pairs']:
-            self.pairListWidget.addItem('({}, {})'.format(valid_pair[0], valid_pair[1]))
+        for match in self.matching['matches']:
+            self.pairListWidget.addItem('({}, {})'.format(match['id_view_i'], match['id_view_j']))
         for view in self.matching['views']:
             self.fileListWidgetI.addItem('{} | {}'.format(view['id_view'], view['filename']))
             self.fileListWidgetJ.addItem('{} | {}'.format(view['id_view'], view['filename']))
-        id_view_i = self.matching['valid_pairs'][0][0]
-        id_view_j = self.matching['valid_pairs'][0][1]
+        id_view_i = self.matching['matches'][0]['id_view_i']
+        id_view_j = self.matching['matches'][0]['id_view_j']
         self.changePair(id_view_i, id_view_j)
 
     def resizeEvent(self, event):
@@ -628,11 +628,11 @@ class MainWindow(QMainWindow, WindowMixin):
         if not self.mayContinue():
             return
         filePath = self.newFileDialog.popUp()
-        x = {'matches': [], 'valid_pairs': [], 'views': []}
+        x = {'matches': [], 'views': []}
         image_paths = self._scan_all_images(self.imageDir)
         for i in range(len(image_paths)):
             for j in range(i + 1, len(image_paths)):
-                x['valid_pairs'].append([i, j])
+                x['matches'].append({'id_view_i': i, 'id_view_j': j, 'match': []})
         for i, image_path in enumerate(image_paths):
             x['views'].append({
                 'id_view': i,
