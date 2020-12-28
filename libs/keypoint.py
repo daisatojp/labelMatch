@@ -19,7 +19,7 @@ class Keypoint(object):
         self.point = [x, y]
 
     def paint(self, painter, offset=0, highlighted=False, selected=False):
-        color = self.fill_color
+        color = self.default_fill_color
         pen = QPen(color)
         pen.setWidth(max(1, int(round(2.0 / self.scale))))
         painter.setPen(pen)

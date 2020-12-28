@@ -202,50 +202,54 @@ class Canvas(QWidget):
 
     def mousePressEvent(self, ev):
         pos = self.transformPos(ev.pos())
+        posViewI = self.GetPosInViewI(pos.x(), pos.y())
+        posViewJ = self.GetPosInViewJ(pos.x(), pos.y())
 
         if self.mode == self.MODE_EDIT_KEYPOINT:
             if ev.button() == Qt.LeftButton:
-                if self.IsInViewI(pos.x(), pos.y()):
-                    if self.keypoints_i
+                if posViewI:
+                    if not self.keypoints_i.is_highlited():
+                        self.keypoints_i.append(posViewI[0], posViewI[1])
 
-        if ev.button() == Qt.LeftButton:
-            if self.drawing():
-                self.handleDrawing(pos)
-            else:
-                selection = self.selectShapePoint(pos)
-                self.prevPoint = pos
+        # if ev.button() == Qt.LeftButton:
+        #     if self.drawing():
+        #         self.handleDrawing(pos)
+        #     else:
+        #         selection = self.selectShapePoint(pos)
+        #         self.prevPoint = pos
+        #
+        #         if selection is None:
+        #             #pan
+        #             QApplication.setOverrideCursor(QCursor(Qt.OpenHandCursor))
+        #             self.pan_initial_pos = pos
+        # elif ev.button() == Qt.RightButton and self.editing():
+        #     self.selectShapePoint(pos)
+        #     self.prevPoint = pos
 
-                if selection is None:
-                    #pan
-                    QApplication.setOverrideCursor(QCursor(Qt.OpenHandCursor))
-                    self.pan_initial_pos = pos
-
-        elif ev.button() == Qt.RightButton and self.editing():
-            self.selectShapePoint(pos)
-            self.prevPoint = pos
         self.update()
 
     def mouseReleaseEvent(self, ev):
-        if ev.button() == Qt.RightButton:
-            menu = self.menus[bool(self.selectedShapeCopy)]
-            self.restoreCursor()
-            if not menu.exec_(self.mapToGlobal(ev.pos()))\
-               and self.selectedShapeCopy:
-                # Cancel the move by deleting the shadow copy.
-                self.selectedShapeCopy = None
-                self.repaint()
-        elif ev.button() == Qt.LeftButton and self.selectedShape:
-            if self.selectedVertex():
-                self.overrideCursor(CURSOR_POINT)
-            else:
-                self.overrideCursor(CURSOR_GRAB)
-        elif ev.button() == Qt.LeftButton:
-            pos = self.transformPos(ev.pos())
-            if self.drawing():
-                self.handleDrawing(pos)
-            else:
-                #pan
-                QApplication.restoreOverrideCursor()
+        return
+        # if ev.button() == Qt.RightButton:
+        #     menu = self.menus[bool(self.selectedShapeCopy)]
+        #     self.restoreCursor()
+        #     if not menu.exec_(self.mapToGlobal(ev.pos()))\
+        #        and self.selectedShapeCopy:
+        #         # Cancel the move by deleting the shadow copy.
+        #         self.selectedShapeCopy = None
+        #         self.repaint()
+        # elif ev.button() == Qt.LeftButton and self.selectedShape:
+        #     if self.selectedVertex():
+        #         self.overrideCursor(CURSOR_POINT)
+        #     else:
+        #         self.overrideCursor(CURSOR_GRAB)
+        # elif ev.button() == Qt.LeftButton:
+        #     pos = self.transformPos(ev.pos())
+        #     if self.drawing():
+        #         self.handleDrawing(pos)
+        #     else:
+        #         #pan
+        #         QApplication.restoreOverrideCursor()
 
     def setEditKeypointMode(self):
         self.mode = self.MODE_EDIT_KEYPOINT
@@ -253,17 +257,17 @@ class Canvas(QWidget):
     def setEditMatchMode(self):
         self.mode = self.MODE_EDIT_MATCH
 
-    def IsInViewI(self, x, y):
+    def GetPosInViewI(self, x, y):
         if 0 <= x <= self.view_i_w and 0 <= y < self.view_i_h:
-            return True
+            return x, y
         else:
-            return False
+            return None
 
-    def IsInViewJ(self, x, y):
+    def GetPosInViewJ(self, x, y):
         if 0 <= x <= self.view_j_w and self.view_i_h <= y < self.view_i_h + self.view_j_h:
-            return True
+            return x, y - self.view_i_h
         else:
-            return False
+            return None
 
     def endMove(self, copy=False):
         assert self.selectedShape and self.selectedShapeCopy
