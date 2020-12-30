@@ -285,21 +285,21 @@ class Canvas(QWidget):
 
     def keyPressEvent(self, ev):
         key = ev.key()
-        if key == Qt.Key_Escape and self.current:
-            print('ESC press')
-            self.current = None
-            self.drawingPolygon.emit(False)
-            self.update()
-        elif key == Qt.Key_Return and self.canCloseShape():
-            self.finalise()
-        elif key == Qt.Key_Left and self.selectedShape:
-            self.moveOnePixel('Left')
-        elif key == Qt.Key_Right and self.selectedShape:
-            self.moveOnePixel('Right')
-        elif key == Qt.Key_Up and self.selectedShape:
-            self.moveOnePixel('Up')
-        elif key == Qt.Key_Down and self.selectedShape:
-            self.moveOnePixel('Down')
+        # if key == Qt.Key_Escape and self.current:
+        #     print('ESC press')
+        #     self.current = None
+        #     self.drawingPolygon.emit(False)
+        #     self.update()
+        # elif key == Qt.Key_Return and self.canCloseShape():
+        #     self.finalise()
+        # elif key == Qt.Key_Left and self.selectedShape:
+        #     self.moveOnePixel('Left')
+        # elif key == Qt.Key_Right and self.selectedShape:
+        #     self.moveOnePixel('Right')
+        # elif key == Qt.Key_Up and self.selectedShape:
+        #     self.moveOnePixel('Up')
+        # elif key == Qt.Key_Down and self.selectedShape:
+        #     self.moveOnePixel('Down')
 
     def setLastLabel(self, text, line_color  = None, fill_color = None):
         assert text

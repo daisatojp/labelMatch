@@ -121,7 +121,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.scrollArea = scroll
         self.canvas.scrollRequest.connect(self.scrollRequest)
 
-        self.canvas.newShape.connect(self.newShape)
         self.canvas.shapeMoved.connect(self.setDirty)
         self.canvas.drawingPolygon.connect(self.toggleDrawingSensitive)
 
@@ -387,46 +386,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.fileListWidgetJ.setCurrentRow(self.matching.get_view_idx_j())
         self.canvas.updatePixmap()
         self.canvas.repaint()
-
-    # Callback functions:
-    def newShape(self):
-        """Pop-up and give focus to the label editor.
-
-        position MUST be in global coordinates.
-        """
-        if not self.useDefaultLabelCheckbox.isChecked() or not self.defaultLabelTextLine.text():
-            if len(self.labelHist) > 0:
-                self.labelDialog = LabelDialog(
-                    parent=self, listItem=self.labelHist)
-
-            # Sync single class mode from PR#106
-            if self.singleClassMode.isChecked() and self.lastLabel:
-                text = self.lastLabel
-            else:
-                text = self.labelDialog.popUp(text=self.prevLabelText)
-                self.lastLabel = text
-        else:
-            text = self.defaultLabelTextLine.text()
-
-        # Add Chris
-        self.diffcButton.setChecked(False)
-        if text is not None:
-            self.prevLabelText = text
-            generate_color = generateColorByText(text)
-            shape = self.canvas.setLastLabel(text, generate_color, generate_color)
-            self.addLabel(shape)
-            if self.beginner():  # Switch to edit mode.
-                self.canvas.setEditing(True)
-                self.actions.create.setEnabled(True)
-            else:
-                self.actions.editMode.setEnabled(True)
-            self.setDirty()
-
-            if text not in self.labelHist:
-                self.labelHist.append(text)
-        else:
-            # self.canvas.undoLastLine()
-            self.canvas.resetAllLines()
 
     def scrollRequest(self, delta, orientation):
         units = - delta / (8 * 15)
