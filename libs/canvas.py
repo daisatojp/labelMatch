@@ -37,7 +37,6 @@ class Canvas(QWidget):
         self.current = None
         self.selectedShape = None  # save the selected shape here
         self.selectedShapeCopy = None
-        self.drawingLineColor = QColor(0, 0, 255)
         self.drawingRectColor = QColor(0, 0, 255)
         self.prevPoint = QPointF()
         self.offsets = QPointF(), QPointF()
@@ -51,11 +50,6 @@ class Canvas(QWidget):
         # Set widget options.
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.WheelFocus)
-        self.verified = False
-        self.drawSquare = False
-
-        #initialisation for panning
-        self.pan_initial_pos = QPoint()
 
     def enterEvent(self, ev):
         self.overrideCursor(self._cursor)
@@ -181,84 +175,6 @@ class Canvas(QWidget):
         self.matching.draw_offset_j_x = 0
         self.matching.draw_offset_j_y = self.img_i_h
 
-    def endMove(self, copy=False):
-        assert self.selectedShape and self.selectedShapeCopy
-        shape = self.selectedShapeCopy
-        #del shape.fill_color
-        #del shape.line_color
-        if copy:
-            self.shapes.append(shape)
-            self.selectedShape.selected = False
-            self.selectedShape = shape
-            self.repaint()
-        else:
-            self.selectedShape.points = [p for p in shape.points]
-        self.selectedShapeCopy = None
-
-    def hideBackroundShapes(self, value):
-        self.hideBackround = value
-        if self.selectedShape:
-            # Only hide other shapes if there is a current selection.
-            # Otherwise the user will not be able to select a shape.
-            self.setHiding(True)
-            self.repaint()
-
-    def handleDrawing(self, pos):
-        if self.current and self.current.reachMaxPoints() is False:
-            initPos = self.current[0]
-            minX = initPos.x()
-            minY = initPos.y()
-            targetPos = self.line[1]
-            maxX = targetPos.x()
-            maxY = targetPos.y()
-            self.current.addPoint(QPointF(maxX, minY))
-            self.current.addPoint(targetPos)
-            self.current.addPoint(QPointF(minX, maxY))
-            self.finalise()
-        elif not self.outOfPixmap(pos):
-            self.current = Shape()
-            self.current.addPoint(pos)
-            self.line.points = [pos, pos]
-            self.setHiding()
-            self.drawingPolygon.emit(True)
-            self.update()
-
-    def boundedMoveVertex(self, pos):
-        index, shape = self.hVertex, self.hShape
-        point = shape[index]
-        if self.outOfPixmap(pos):
-            size = self.pixmap.size()
-            clipped_x = min(max(0, pos.x()), size.width())
-            clipped_y = min(max(0, pos.y()), size.height())
-            pos = QPointF(clipped_x, clipped_y)
-
-        if self.drawSquare:
-            opposite_point_index = (index + 2) % 4
-            opposite_point = shape[opposite_point_index]
-
-            min_size = min(abs(pos.x() - opposite_point.x()), abs(pos.y() - opposite_point.y()))
-            directionX = -1 if pos.x() - opposite_point.x() < 0 else 1
-            directionY = -1 if pos.y() - opposite_point.y() < 0 else 1
-            shiftPos = QPointF(opposite_point.x() + directionX * min_size - point.x(),
-                               opposite_point.y() + directionY * min_size - point.y())
-        else:
-            shiftPos = pos - point
-
-        shape.moveVertexBy(index, shiftPos)
-
-        lindex = (index + 1) % 4
-        rindex = (index + 3) % 4
-        lshift = None
-        rshift = None
-        if index % 2 == 0:
-            rshift = QPointF(shiftPos.x(), 0)
-            lshift = QPointF(0, shiftPos.y())
-        else:
-            lshift = QPointF(shiftPos.x(), 0)
-            rshift = QPointF(0, shiftPos.y())
-        shape.moveVertexBy(rindex, rshift)
-        shape.moveVertexBy(lindex, lshift)
-
     def paintEvent(self, event):
         if not self.pixmap:
             return super(Canvas, self).paintEvent(event)
@@ -294,20 +210,10 @@ class Canvas(QWidget):
             p.setBrush(brush)
             p.drawRect(leftTop.x(), leftTop.y(), rectWidth, rectHeight)
 
-        # if self.drawing() and not self.prevPoint.isNull() and not self.outOfPixmap(self.prevPoint):
-        #     p.setPen(QColor(0, 0, 0))
-        #     p.drawLine(self.prevPoint.x(), 0, self.prevPoint.x(), self.pixmap.height())
-        #     p.drawLine(0, self.prevPoint.y(), self.pixmap.width(), self.prevPoint.y())
-
         self.setAutoFillBackground(True)
-        if self.verified:
-            pal = self.palette()
-            pal.setColor(self.backgroundRole(), QColor(184, 239, 38, 128))
-            self.setPalette(pal)
-        else:
-            pal = self.palette()
-            pal.setColor(self.backgroundRole(), QColor(232, 232, 232, 255))
-            self.setPalette(pal)
+        pal = self.palette()
+        pal.setColor(self.backgroundRole(), QColor(232, 232, 232, 255))
+        self.setPalette(pal)
 
         p.end()
 
@@ -394,10 +300,6 @@ class Canvas(QWidget):
             self.moveOnePixel('Up')
         elif key == Qt.Key_Down and self.selectedShape:
             self.moveOnePixel('Down')
-
-    def moveOutOfBound(self, step):
-        points = [p1+p2 for p1, p2 in zip(self.selectedShape.points, [step]*4)]
-        return True in map(self.outOfPixmap, points)
 
     def setLastLabel(self, text, line_color  = None, fill_color = None):
         assert text
