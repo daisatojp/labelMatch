@@ -18,6 +18,9 @@ class Keypoint(object):
     def __init__(self, x, y):
         self.point = [x, y]
 
+    def set_pos(self, x, y):
+        self.point = [x, y]
+
     def paint(self, painter, offset=0, highlighted=False, selected=False):
         color = self.default_fill_color
         pen = QPen(color)

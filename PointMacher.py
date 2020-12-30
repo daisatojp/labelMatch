@@ -5,10 +5,6 @@ import codecs
 import distutils.spawn
 import os
 import os.path as osp
-import platform
-import re
-import sys
-import subprocess
 import json
 import numpy as np
 import cv2
@@ -21,7 +17,7 @@ from PyQt5.QtWidgets import *
 from libs.constants import *
 from libs.utils import *
 from libs.settings import Settings
-from libs.keypoints import Keypoints
+from libs.matching import Matching
 from libs.stringBundle import StringBundle
 from libs.canvas import Canvas
 from libs.zoomWidget import ZoomWidget
@@ -362,63 +358,36 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def pairitemDoubleClicked(self, item=None):
         idx = self.pairListWidget.currentIndex().row()
-        if idx < len(self.matching['matches']):
-            id_view_i = self.matching['matches'][idx]['id_view_i']
-            id_view_j = self.matching['matches'][idx]['id_view_j']
+        if idx < len(self.matching.get_matches()):
+            id_view_i = self.matching.get_matches()[idx]['id_view_i']
+            id_view_j = self.matching.get_matches()[idx]['id_view_j']
             self.changePair(id_view_i, id_view_j)
 
     def fileitemDoubleClickedI(self, item=None):
-        id_view_i = self.matching['views'][self.fileListWidgetI.currentIndex().row()]['id_view']
-        id_view_j = self.matching['views'][self.fileListWidgetJ.currentIndex().row()]['id_view']
+        id_view_i = self.matching.get_views()[self.fileListWidgetI.currentIndex().row()]['id_view']
+        id_view_j = self.matching.get_views()[self.fileListWidgetJ.currentIndex().row()]['id_view']
         self.changePair(id_view_i, id_view_j)
 
     def fileitemDoubleClickedJ(self, item=None):
-        id_view_i = self.matching['views'][self.fileListWidgetI.currentIndex().row()]['id_view']
-        id_view_j = self.matching['views'][self.fileListWidgetJ.currentIndex().row()]['id_view']
+        id_view_i = self.matching.get_views()[self.fileListWidgetI.currentIndex().row()]['id_view']
+        id_view_j = self.matching.get_views()[self.fileListWidgetJ.currentIndex().row()]['id_view']
         self.changePair(id_view_i, id_view_j)
 
     def changePair(self, id_view_i, id_view_j):
-        if len(self.matching['matches']) < self.pairListWidget.count():
+        if len(self.matching.get_matches()) < self.pairListWidget.count():
             self.pairListWidget.takeItem(self.pairListWidget.count()-1)
-        m = [[x['id_view_i'], x['id_view_j']] == [id_view_i, id_view_j] for x in self.matching['matches']]
+        m = [[x['id_view_i'], x['id_view_j']] == [id_view_i, id_view_j] for x in self.matching.get_matches()]
         if any(m):
             idx = m.index(True)
             self.pairListWidget.setCurrentRow(idx)
         else:
             self.pairListWidget.addItem('None ({}, {})'.format(id_view_i, id_view_j))
             self.pairListWidget.setCurrentRow(self.pairListWidget.count()-1)
-        idx_view_i = self.get_idx_view(id_view_i)
-        idx_view_j = self.get_idx_view(id_view_j)
-        self.fileListWidgetI.setCurrentRow(idx_view_i)
-        self.fileListWidgetJ.setCurrentRow(idx_view_j)
-        img_i = cv2.imread(osp.join(self.imageDir, osp.join(*self.matching['views'][idx_view_i]['filename'])))
-        img_j = cv2.imread(osp.join(self.imageDir, osp.join(*self.matching['views'][idx_view_j]['filename'])))
-        self.img_i_h, self.img_i_w, _ = img_i.shape
-        self.img_j_h, self.img_j_w, _ = img_j.shape
-        # set image
-        img_h = self.img_i_h + self.img_j_h
-        img_w = max(self.img_i_w, self.img_j_w)
-        img = np.zeros(shape=(img_h, img_w, 3), dtype=np.uint8)
-        img[:self.img_i_h, :self.img_i_w, :] = img_i
-        img[self.img_i_h:, :self.img_j_w, :] = img_j
-        qimg = QImage(img.flatten(), img_w, img_h, QImage.Format_BGR888)
-        self.image = qimg
-        self.canvas.setPixmap(QPixmap.fromImage(qimg))
-        # set keypoints
-        keypoints_i = Keypoints()
-        for p in self.matching['views'][idx_view_i]['keypoints']:
-            keypoints_i.append(p[0], p[1])
-        keypoints_j = Keypoints()
-        for p in self.matching['views'][idx_view_j]['keypoints']:
-            keypoints_j.append(p[0], p[1])
-        self.canvas.setKeypoints_i(keypoints_i)
-        self.canvas.setKeypoints_j(keypoints_j)
-        # set offset
-        self.canvas.setViewSize(self.img_i_w, self.img_i_h, self.img_j_w, self.img_j_h)
+        self.matching.set_view(id_view_i, id_view_j)
+        self.fileListWidgetI.setCurrentRow(self.matching.get_view_idx_i())
+        self.fileListWidgetJ.setCurrentRow(self.matching.get_view_idx_j())
+        self.canvas.updatePixmap()
         self.canvas.repaint()
-
-    def get_idx_view(self, id_view):
-        return [v['id_view'] == id_view for v in self.matching['views']].index(True)
 
     # Callback functions:
     def newShape(self):
@@ -539,18 +508,18 @@ class MainWindow(QMainWindow, WindowMixin):
         self.adjustScale()
 
     def loadFile(self, filePath):
-        with open(filePath, 'r') as f:
-            self.matching = json.load(f)
+        self.matching = Matching(filePath, self.imageDir)
+        self.canvas.setMatching(self.matching)
         self.pairListWidget.clear()
         self.fileListWidgetI.clear()
         self.fileListWidgetJ.clear()
-        for match in self.matching['matches']:
+        for match in self.matching.get_matches():
             self.pairListWidget.addItem('({}, {})'.format(match['id_view_i'], match['id_view_j']))
-        for view in self.matching['views']:
+        for view in self.matching.get_views():
             self.fileListWidgetI.addItem('{} | {}'.format(view['id_view'], view['filename']))
             self.fileListWidgetJ.addItem('{} | {}'.format(view['id_view'], view['filename']))
-        id_view_i = self.matching['matches'][0]['id_view_i']
-        id_view_j = self.matching['matches'][0]['id_view_j']
+        id_view_i = self.matching.get_matches()[0]['id_view_i']
+        id_view_j = self.matching.get_matches()[0]['id_view_j']
         self.changePair(id_view_i, id_view_j)
 
     def resizeEvent(self, event):
@@ -560,7 +529,7 @@ class MainWindow(QMainWindow, WindowMixin):
         super(MainWindow, self).resizeEvent(event)
 
     def paintCanvas(self):
-        assert not self.image.isNull(), "cannot paint null image"
+        # assert not self.image.isNull(), "cannot paint null image"
         self.canvas.scale = 0.01 * self.zoomWidget.value()
         self.canvas.adjustSize()
         self.canvas.update()
@@ -592,10 +561,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.settings[SETTING_WIN_SIZE] = self.size()
         self.settings[SETTING_WIN_POSE] = self.pos()
         self.settings[SETTING_WIN_STATE] = self.saveState()
-        self.settings[SETTING_LINE_COLOR] = self.lineColor
-        self.settings[SETTING_FILL_COLOR] = self.fillColor
         self.settings[SETTING_RECENT_FILES] = self.recentFiles
-        self.settings[SETTING_ADVANCE_MODE] = not self._beginner
         if self.defaultSaveDir and os.path.exists(self.defaultSaveDir):
             self.settings[SETTING_SAVE_DIR] = ustr(self.defaultSaveDir)
         else:

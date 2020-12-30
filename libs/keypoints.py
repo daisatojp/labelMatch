@@ -8,6 +8,9 @@ class Keypoints(object):
         self.selected_idx = None
         self.highlighted_idx = None
 
+    def set_pos(self, idx, x, y):
+        self.keypoints[idx].set_pos(x, y)
+
     def paint(self, painter, offset=0):
         for idx, keypoint in enumerate(self.keypoints):
             keypoint.paint(
@@ -20,22 +23,12 @@ class Keypoints(object):
         self.keypoints.append(Keypoint(x, y))
 
     def min_distance(self, x, y):
+        if self.empty():
+            return None
         distances = [keypoint.distance([x, y]) for keypoint in self.keypoints]
         val = min(distances)
         idx = distances.index(val)
         return val, idx
 
-    def select(self, idx):
-        self.selected_idx = idx
-
-    def is_highlited(self):
-        if self.highlighted_idx is not None:
-            return True
-        else:
-            return False
-
-    def is_selected(self):
-        if self.selected_idx is not None:
-            return True
-        else:
-            return False
+    def empty(self):
+        return not 0 < len(self.keypoints)
