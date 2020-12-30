@@ -34,20 +34,13 @@ class Canvas(QWidget):
         self.img_i_h = None
         self.img_j_w = None
         self.img_j_h = None
-        self.current = None
-        self.selectedShape = None  # save the selected shape here
-        self.selectedShapeCopy = None
-        self.drawingRectColor = QColor(0, 0, 255)
-        self.prevPoint = QPointF()
-        self.offsets = QPointF(), QPointF()
         self.scale = 1.0
         self.pixmap = QPixmap()
         self.visible = {}
         self._painter = QPainter()
         self._cursor = CURSOR_DEFAULT
-        # Menus:
         self.menus = (QMenu(), QMenu())
-        # Set widget options.
+        # set widget options
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.WheelFocus)
 
@@ -62,17 +55,6 @@ class Canvas(QWidget):
 
     def isVisible(self, shape):
         return self.visible.get(shape, True)
-
-    def editing(self):
-        return self.mode == self.EDIT
-
-    def setEditing(self, value=True):
-        self.mode = self.EDIT if value else self.CREATE
-        if not value:  # Create
-            self.unHighlight()
-            self.deSelectShape()
-        self.prevPoint = QPointF()
-        self.repaint()
 
     def mouseMoveEvent(self, ev):
         pos = self.transformPos(ev.pos())
@@ -193,23 +175,6 @@ class Canvas(QWidget):
         if self.matching:
             self.matching.paint(p, self.scale)
 
-        if self.current:
-            self.current.paint(p)
-            self.line.paint(p)
-        if self.selectedShapeCopy:
-            self.selectedShapeCopy.paint(p)
-
-        # Paint rect
-        if self.current is not None and len(self.line) == 2:
-            leftTop = self.line[0]
-            rightBottom = self.line[1]
-            rectWidth = rightBottom.x() - leftTop.x()
-            rectHeight = rightBottom.y() - leftTop.y()
-            p.setPen(self.drawingRectColor)
-            brush = QBrush(Qt.BDiagPattern)
-            p.setBrush(brush)
-            p.drawRect(leftTop.x(), leftTop.y(), rectWidth, rectHeight)
-
         self.setAutoFillBackground(True)
         pal = self.palette()
         pal.setColor(self.backgroundRole(), QColor(232, 232, 232, 255))
@@ -244,12 +209,6 @@ class Canvas(QWidget):
         self.setHiding(False)
         self.newShape.emit()
         self.update()
-
-    def closeEnough(self, p1, p2):
-        #d = distance(p1 - p2)
-        #m = (p1-p2).manhattanLength()
-        # print "d %.2f, m %d, %.2f" % (d, m, d - m)
-        return distance(p1 - p2) < self.epsilon
 
     # These two, along with a call to adjustSize are required for the
     # scroll area.
@@ -301,31 +260,6 @@ class Canvas(QWidget):
         # elif key == Qt.Key_Down and self.selectedShape:
         #     self.moveOnePixel('Down')
 
-    def setLastLabel(self, text, line_color  = None, fill_color = None):
-        assert text
-        self.shapes[-1].label = text
-        if line_color:
-            self.shapes[-1].line_color = line_color
-
-        if fill_color:
-            self.shapes[-1].fill_color = fill_color
-
-        return self.shapes[-1]
-
-    def resetAllLines(self):
-        assert self.shapes
-        self.current = self.shapes.pop()
-        self.current.setOpen()
-        self.line.points = [self.current[-1], self.current[0]]
-        self.drawingPolygon.emit(True)
-        self.current = None
-        self.drawingPolygon.emit(False)
-        self.update()
-
-    def setShapeVisible(self, shape, value):
-        self.visible[shape] = value
-        self.repaint()
-
     def currentCursor(self):
         cursor = QApplication.overrideCursor()
         if cursor is not None:
@@ -346,6 +280,3 @@ class Canvas(QWidget):
         self.restoreCursor()
         self.pixmap = None
         self.update()
-
-    def setDrawingShapeToSquare(self, status):
-        self.drawSquare = status

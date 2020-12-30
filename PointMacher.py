@@ -109,7 +109,6 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.canvas = Canvas(parent=self)
         self.canvas.zoomRequest.connect(self.zoomRequest)
-        self.canvas.setDrawingShapeToSquare(self.settings.get(SETTING_DRAW_SQUARE, False))
 
         scroll = QScrollArea()
         scroll.setWidget(self.canvas)
@@ -120,9 +119,6 @@ class MainWindow(QMainWindow, WindowMixin):
         }
         self.scrollArea = scroll
         self.canvas.scrollRequest.connect(self.scrollRequest)
-
-        self.canvas.shapeMoved.connect(self.setDirty)
-        self.canvas.drawingPolygon.connect(self.toggleDrawingSensitive)
 
         self.setCentralWidget(scroll)
         self.addDockWidget(Qt.RightDockWidgetArea, self.pairdock)
@@ -300,14 +296,16 @@ class MainWindow(QMainWindow, WindowMixin):
         self.labelCoordinates = QLabel('')
         self.statusBar().addPermanentWidget(self.labelCoordinates)
 
-    def keyReleaseEvent(self, event):
-        if event.key() == Qt.Key_Control:
-            self.canvas.setDrawingShapeToSquare(False)
+    def keyReleaseEvent(self, ev):
+        pass
+        # if event.key() == Qt.Key_Control:
+        #     self.canvas.setDrawingShapeToSquare(False)
 
-    def keyPressEvent(self, event):
-        if event.key() == Qt.Key_Control:
-            # Draw rectangle if Ctrl is pressed
-            self.canvas.setDrawingShapeToSquare(True)
+    def keyPressEvent(self, ev):
+        pass
+        # if event.key() == Qt.Key_Control:
+        #     # Draw rectangle if Ctrl is pressed
+        #     self.canvas.setDrawingShapeToSquare(True)
 
     def setDirty(self):
         self.dirty = True
@@ -329,21 +327,6 @@ class MainWindow(QMainWindow, WindowMixin):
         from libs.__init__ import __version__
         msg = u'Name:{0} \nApp Version:{1} \n{2} '.format(__appname__, __version__, sys.version_info)
         QMessageBox.information(self, u'Information', msg)
-
-    def createShape(self):
-        assert self.beginner()
-        self.canvas.setEditing(False)
-        self.actions.create.setEnabled(False)
-
-    def toggleDrawingSensitive(self, drawing=True):
-        """In the middle of drawing, toggling between modes should be disabled."""
-        self.actions.editMode.setEnabled(not drawing)
-        if not drawing and self.beginner():
-            # Cancel creation.
-            print('Cancel creation.')
-            self.canvas.setEditing(True)
-            self.canvas.restoreCursor()
-            self.actions.create.setEnabled(True)
 
     def setEditKeypointMode(self):
         self.actions.editKeypointMode.setEnabled(False)
