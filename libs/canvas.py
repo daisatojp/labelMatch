@@ -73,6 +73,9 @@ class Canvas(QWidget):
                 if posInViewI and self.matching.selected_idx_i is not None:
                     self.matching.set_keypoint_pos_in_view_i(
                         self.matching.selected_idx_i, posInViewI[0], posInViewI[1])
+                if posInViewJ and self.matching.selected_idx_j is not None:
+                    self.matching.set_keypoint_pos_in_view_j(
+                        self.matching.selected_idx_j, posInViewJ[0], posInViewJ[1])
             else:
                 if posInViewI and not self.matching.empty_i():
                     val, idx = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
@@ -80,6 +83,13 @@ class Canvas(QWidget):
                         self.matching.highlighted_idx_i = idx
                     else:
                         self.matching.highlighted_idx_i = None
+                if posInViewJ and not self.matching.empty_j():
+                    val, idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
+                    if val < self.epsilon / self.scale:
+                        self.matching.highlighted_idx_j = idx
+                    else:
+                        self.matching.highlighted_idx_j = None
+
         self.update()
 
     def mousePressEvent(self, ev):
@@ -95,6 +105,13 @@ class Canvas(QWidget):
                         self.matching.highlighted_idx_i = None
                     else:
                         self.matching.append_keypoint_in_view_i(posInViewI[0], posInViewI[1])
+                if posInViewJ:
+                    if self.matching.highlighted_idx_j is not None:
+                        self.matching.selected_idx_j = self.matching.highlighted_idx_j
+                        self.matching.highlighted_idx_j = None
+                    else:
+                        self.matching.append_keypoint_in_view_j(posInViewJ[0], posInViewJ[1])
+
         self.update()
 
     def mouseReleaseEvent(self, ev):
@@ -118,6 +135,12 @@ class Canvas(QWidget):
                 val, idx = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
                 if val < self.epsilon / self.scale:
                     self.matching.remove_keypoint_in_view_i(idx)
+            if posInViewJ and not self.matching.empty_j():
+                val, idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
+                if val < self.epsilon / self.scale:
+                    self.matching.remove_keypoint_in_view_j(idx)
+
+        self.update()
 
     def setMatching(self, matching):
         self.matching = matching
