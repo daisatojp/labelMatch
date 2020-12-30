@@ -373,17 +373,16 @@ class MainWindow(QMainWindow, WindowMixin):
         id_view_j = self.matching.get_views()[self.fileListWidgetJ.currentIndex().row()]['id_view']
         self.changePair(id_view_i, id_view_j)
 
-    def changePair(self, id_view_i, id_view_j):
+    def changePair(self, view_id_i, view_id_j):
         if len(self.matching.get_matches()) < self.pairListWidget.count():
             self.pairListWidget.takeItem(self.pairListWidget.count()-1)
-        m = [[x['id_view_i'], x['id_view_j']] == [id_view_i, id_view_j] for x in self.matching.get_matches()]
-        if any(m):
-            idx = m.index(True)
-            self.pairListWidget.setCurrentRow(idx)
+        match_idx = self.matching.find_match_idx(view_id_i, view_id_j)
+        if match_idx is not None:
+            self.pairListWidget.setCurrentRow(match_idx)
         else:
-            self.pairListWidget.addItem('None ({}, {})'.format(id_view_i, id_view_j))
+            self.pairListWidget.addItem('None ({}, {})'.format(view_id_i, view_id_j))
             self.pairListWidget.setCurrentRow(self.pairListWidget.count()-1)
-        self.matching.set_view(id_view_i, id_view_j)
+        self.matching.set_view(view_id_i, view_id_j)
         self.fileListWidgetI.setCurrentRow(self.matching.get_view_idx_i())
         self.fileListWidgetJ.setCurrentRow(self.matching.get_view_idx_j())
         self.canvas.updatePixmap()

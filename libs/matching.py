@@ -93,9 +93,9 @@ class Matching:
     def set_view(self, view_id_i, view_id_j):
         self._view_id_i = view_id_i
         self._view_id_j = view_id_j
-        self._view_idx_i = Matching.find_view_idx(self.data, view_id_i)
-        self._view_idx_j = Matching.find_view_idx(self.data, view_id_j)
-        self._match_idx = Matching.find_match_idx(self.data, view_id_i, view_id_j)
+        self._view_idx_i = self.find_view_idx(view_id_i)
+        self._view_idx_j = self.find_view_idx(view_id_j)
+        self._match_idx = self.find_match_idx(view_id_i, view_id_j)
 
     def append_keypoint_in_view_i(self, x, y):
         self.data['views'][self._view_idx_i]['keypoints'].append([x, y])
@@ -145,14 +145,19 @@ class Matching:
     def min_distance_in_view_j(self, x, y):
         return Matching.min_distance(x, y, self.data['views'][self._view_idx_j]['keypoints'])
 
-    @staticmethod
-    def find_view_idx(matching, view_id):
-        return [v['id_view'] == view_id for v in matching['views']].index(True)
+    def find_view_idx(self, view_id):
+        arr = [v['id_view'] == view_id for v in self.data['views']]
+        if any(arr):
+            return arr.index(True)
+        else:
+            return None
 
-    @staticmethod
-    def find_match_idx(matching, view_id_i, view_id_j):
-        return [m['id_view_i'] == view_id_i and m['id_view_j'] == view_id_j
-                for m in matching['matches']].index(True)
+    def find_match_idx(self, view_id_i, view_id_j):
+        arr = [m['id_view_i'] == view_id_i and m['id_view_j'] == view_id_j for m in self.data['matches']]
+        if any(arr):
+            return arr.index(True)
+        else:
+            return None
 
     @staticmethod
     def empty(keypoints):
