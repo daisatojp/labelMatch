@@ -7,9 +7,7 @@ import os
 import os.path as osp
 import json
 import numpy as np
-import cv2
 from functools import partial
-from collections import defaultdict
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -24,7 +22,6 @@ from libs.zoomWidget import ZoomWidget
 from libs.newFileDialog import NewFileDialog
 from libs.toolBar import ToolBar
 from libs.ustr import ustr
-from libs.hashableQListWidgetItem import HashableQListWidgetItem
 
 __appname__ = 'PointMatcher'
 
@@ -181,10 +178,10 @@ class MainWindow(QMainWindow, WindowMixin):
         # Edit menu
         editKeypointMode = action(
             getStr('editKeypoint'), self.setEditKeypointMode,
-            'v', 'new', getStr('editKeypointDetail'), enabled=True)
+            'v', 'new', getStr('editKeypointDetail'), enabled=False)
         editMatchMode = action(
             getStr('editMatch'), self.setEditMatchMode,
-            'e', 'edit', u'Move and edit Boxs', enabled=False)
+            'e', 'edit', u'Move and edit Boxs', enabled=True)
 
         # Help Menu
         showInfo = action(

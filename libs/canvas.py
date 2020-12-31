@@ -1,7 +1,6 @@
 import os
 import os.path as osp
 import numpy as np
-import cv2
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -90,6 +89,22 @@ class Canvas(QWidget):
                     else:
                         self.matching.highlighted_idx_j = None
 
+        if self.mode == self.MODE_EDIT_MATCH:
+            if posInViewI and not self.matching.empty_i():
+                val, idx = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
+                if val < self.epsilon / self.scale and self.matching.selected_idx_i != idx:
+                    self.matching.highlighted_idx_i = idx
+                else:
+                    self.matching.highlighted_idx_i = None
+                    self.matching.highlighted_idx_j = None
+            if posInViewJ and not self.matching.empty_i():
+                val, idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
+                if val < self.epsilon / self.scale and self.matching.selected_idx_j != idx:
+                    self.matching.highlighted_idx_j = idx
+                else:
+                    self.matching.highlighted_idx_i = None
+                    self.matching.highlighted_idx_j = None
+
         self.update()
 
     def mousePressEvent(self, ev):
@@ -111,6 +126,32 @@ class Canvas(QWidget):
                         self.matching.highlighted_idx_j = None
                     else:
                         self.matching.append_keypoint_in_view_j(posInViewJ[0], posInViewJ[1])
+
+        if self.mode == self.MODE_EDIT_MATCH:
+            if ev.button() == Qt.LeftButton:
+                if posInViewI:
+                    if (self.matching.highlighted_idx_i is not None) and (self.matching.selected_idx_j is not None):
+                        try:
+                            self.matching.append_match(
+                                self.matching.highlighted_idx_i,
+                                self.matching.selected_idx_j)
+                        except RuntimeWarning as e:
+                            QMessageBox.warning(self, 'Attention', '{}'.format(e), QMessageBox.Ok)
+                    if (self.matching.highlighted_idx_i is not None) and (self.matching.selected_idx_j is None):
+                        self.matching.selected_idx_i = self.matching.highlighted_idx_i
+                        self.matching.highlighted_idx_i = None
+                if posInViewJ:
+                    if (self.matching.highlighted_idx_j is not None) and (self.matching.selected_idx_i is not None):
+                        try:
+                            self.matching.append_match(
+                                self.matching.highlighted_idx_j,
+                                self.matching.selected_idx_i)
+                            self.matching.clear_keypoint_decoration()
+                        except RuntimeWarning as e:
+                            QMessageBox.warning(self, 'Attention', '{}'.format(e), QMessageBox.Ok)
+                    if (self.matching.highlighted_idx_j is not None) and (self.matching.selected_idx_i is None):
+                        self.matching.selected_idx_j = self.matching.highlighted_idx_j
+                        self.matching.highlighted_idx_j = None
 
         self.update()
 
@@ -147,9 +188,13 @@ class Canvas(QWidget):
 
     def setEditKeypointMode(self):
         self.mode = self.MODE_EDIT_KEYPOINT
+        if self.matching:
+            self.matching.clear_keypoint_decoration()
 
     def setEditMatchMode(self):
         self.mode = self.MODE_EDIT_MATCH
+        if self.matching:
+            self.matching.clear_keypoint_decoration()
 
     def GetPosInViewI(self, x, y):
         if all([self.img_i_w, self.img_i_h, self.img_j_w, self.img_j_h]):

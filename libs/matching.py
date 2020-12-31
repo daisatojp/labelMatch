@@ -10,6 +10,14 @@ class Matching:
     default_fill_color = QColor(255, 0, 0, 128)
     highlighted_fill_color = QColor(255, 0, 0, 255)
     selected_fill_color = QColor(0, 128, 255, 155)
+    match_colors = [
+        QColor(255, 0, 0, 255),
+        QColor(0, 255, 0, 255),
+        QColor(0, 0, 255, 255),
+        QColor(255, 255, 0, 255),
+        QColor(255, 0, 255, 255),
+        QColor(0, 255, 255, 255),
+        QColor(255, 255, 255, 255)]
     size = 8
 
     def __init__(self, data=None, image_dir=None):
@@ -71,6 +79,15 @@ class Matching:
                 painter.fillPath(point_path, self.highlighted_fill_color)
             else:
                 painter.fillPath(point_path, self.default_fill_color)
+        if self._match_idx is not None:
+            for idx, match in enumerate(self.data['matches'][self._match_idx]['match']):
+                keypoint_i = self.data['views'][self._view_idx_i]['keypoints'][match[0]]
+                keypoint_j = self.data['views'][self._view_idx_j]['keypoints'][match[1]]
+                match_path = QPainterPath()
+                match_path.moveTo(keypoint_i[0] + self.draw_offset_i_x, keypoint_i[1] + self.draw_offset_i_y)
+                match_path.lineTo(keypoint_j[0] + self.draw_offset_j_x, keypoint_j[1] + self.draw_offset_j_y)
+                painter.drawPath(match_path)
+                painter.fillPath(match_path, self.match_colors[idx % len(self.match_colors)])
 
     def get_matches(self):
         return self.data['matches']
@@ -102,6 +119,16 @@ class Matching:
 
     def append_keypoint_in_view_j(self, x, y):
         self.data['views'][self._view_idx_j]['keypoints'].append([x, y])
+
+    def append_match(self, keypoint_idx_i, keypoint_idx_j):
+        if self._match_idx is not None:
+            arr = [match[0] == keypoint_idx_i or match[1] == keypoint_idx_j
+                   for match in self.data['matches'][self._match_idx]['match']]
+            if any(arr):
+                raise RuntimeWarning('this keypoints are assined as a match')
+            self.data['matches'][self._match_idx]['match'].append([keypoint_idx_i, keypoint_idx_j])
+        else:
+            raise RuntimeWarning('This view pair is not registered.')
 
     def set_keypoint_pos_in_view_i(self, idx, x, y):
         self.data['views'][self._view_idx_i]['keypoints'][idx] = [x, y]
@@ -158,6 +185,12 @@ class Matching:
             return arr.index(True)
         else:
             return None
+
+    def clear_keypoint_decoration(self):
+        self.highlighted_idx_i = None
+        self.selected_idx_i = None
+        self.highlighted_idx_j = None
+        self.selected_idx_j = None
 
     @staticmethod
     def empty(keypoints):
