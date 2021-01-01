@@ -1,8 +1,8 @@
+import os
+import os.path as osp
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-
-from libs.utils import newIcon
 
 BB = QDialogButtonBox
 
@@ -15,8 +15,8 @@ class NewFileDialog(QDialog):
         self.editMatchingFile = QLineEdit()
 
         self.buttonBox = bb = BB(BB.Ok | BB.Cancel, Qt.Horizontal, self)
-        bb.button(BB.Ok).setIcon(newIcon('done'))
-        bb.button(BB.Cancel).setIcon(newIcon('undo'))
+        bb.button(BB.Ok).setIcon(QIcon(osp.join('resources', 'icons', 'done.png')))
+        bb.button(BB.Cancel).setIcon(QIcon(osp.join('recources', 'icons', 'undo.png')))
         bb.accepted.connect(self.accept)
         bb.rejected.connect(self.reject)
 

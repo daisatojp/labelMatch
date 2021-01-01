@@ -1,26 +1,18 @@
-from math import sqrt
+import os
+import os.path as osp
 from libs.ustr import ustr
 import hashlib
 import re
 import sys
-
-try:
-    from PyQt5.QtGui import *
-    from PyQt5.QtCore import *
-    from PyQt5.QtWidgets import *
-except ImportError:
-    from PyQt4.QtGui import *
-    from PyQt4.QtCore import *
-
-
-def newIcon(icon):
-    return QIcon(':/' + icon)
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
 
 
 def newButton(text, icon=None, slot=None):
     b = QPushButton(text)
     if icon is not None:
-        b.setIcon(newIcon(icon))
+        b.setIcon(QIcon(icon))
     if slot is not None:
         b.clicked.connect(slot)
     return b
@@ -31,7 +23,7 @@ def newAction(parent, text, slot=None, shortcut=None, icon=None,
     """Create a new action and assign callbacks, shortcuts, etc."""
     a = QAction(text, parent)
     if icon is not None:
-        a.setIcon(newIcon(icon))
+        a.setIcon(QIcon(osp.join('resources', 'icons', icon + '.png')))
     if shortcut is not None:
         if isinstance(shortcut, (list, tuple)):
             a.setShortcuts(shortcut)

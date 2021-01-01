@@ -628,7 +628,7 @@ def get_main_app(argv=[]):
     """
     app = QApplication(argv)
     app.setApplicationName(__appname__)
-    app.setWindowIcon(newIcon("app"))
+    app.setWindowIcon(QIcon(osp.join('resources', 'icons', 'app.png')))
     # Tzutalin 201705+: Accept extra agruments to change predefined class file
     argparser = argparse.ArgumentParser()
     argparser.add_argument("image_dir", nargs="?")
