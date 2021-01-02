@@ -11,7 +11,6 @@ from functools import partial
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-# from libs.resources import *
 from libs.constants import *
 from libs.utils import *
 from libs.settings import Settings
@@ -58,7 +57,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.matching = None
 
         self.stringBundle = StringBundle.getBundle()
-        getStr = lambda strId: self.stringBundle.getString(strId)
+        getStr = self.stringBundle.getString
 
         self.imageDir = None
         self.savePath = None
@@ -176,12 +175,18 @@ class MainWindow(QMainWindow, WindowMixin):
             checkable=True, enabled=False)
 
         # Edit menu
-        editKeypointMode = action(
-            getStr('editKeypoint'), self.setEditKeypointMode,
-            'v', 'new', getStr('editKeypointDetail'), enabled=False)
-        editMatchMode = action(
-            getStr('editMatch'), self.setEditMatchMode,
-            'e', 'edit', u'Move and edit Boxs', enabled=True)
+        editKeypointMode = QAction(getStr('editKeypoint'), self)
+        editKeypointMode.triggered.connect(self.setEditKeypointMode)
+        editKeypointMode.setEnabled(True)
+        editKeypointMode.setCheckable(True)
+        editKeypointMode.setChecked(False)
+        editKeypointMode.setShortcut('v')
+        editMatchMode = QAction(getStr('editMatch'), self)
+        editMatchMode.triggered.connect(self.setEditMatchMode)
+        editMatchMode.setEnabled(True)
+        editMatchMode.setCheckable(True)
+        editMatchMode.setChecked(True)
+        editMatchMode.setShortcut('e')
 
         # Help Menu
         showInfo = action(
@@ -326,13 +331,13 @@ class MainWindow(QMainWindow, WindowMixin):
         QMessageBox.information(self, u'Information', msg)
 
     def setEditKeypointMode(self):
-        self.actions.editKeypointMode.setEnabled(False)
-        self.actions.editMatchMode.setEnabled(True)
+        self.actions.editKeypointMode.setChecked(True)
+        self.actions.editMatchMode.setChecked(False)
         self.canvas.setEditKeypointMode()
 
     def setEditMatchMode(self):
-        self.actions.editKeypointMode.setEnabled(True)
-        self.actions.editMatchMode.setEnabled(False)
+        self.actions.editKeypointMode.setChecked(False)
+        self.actions.editMatchMode.setChecked(True)
         self.canvas.setEditMatchMode()
 
     def pairitemDoubleClicked(self, item=None):
