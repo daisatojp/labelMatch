@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-# -*- coding: utf-8 -*-
+
 import argparse
 import codecs
 import distutils.spawn
@@ -22,7 +22,8 @@ from libs.newFileDialog import NewFileDialog
 from libs.toolBar import ToolBar
 from libs.ustr import ustr
 
-__appname__ = 'PointMatcher'
+__app_name__ = 'PointMatcher'
+__app_version__ = '1.0.0'
 
 
 class WindowMixin(object):
@@ -49,7 +50,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def __init__(self, defaultFilename=None, defaultPrefdefClassFile=None, defaultSaveDir=None):
         super(MainWindow, self).__init__()
-        self.setWindowTitle(__appname__)
+        self.setWindowTitle(__app_name__)
 
         self.settings = Settings()
         self.settings.load()
@@ -257,7 +258,7 @@ class MainWindow(QMainWindow, WindowMixin):
             (openDir, openFile, openNextPair, openPrevPair,
              zoomIn, zoom, zoomOut, fitWindow, fitWidth))
 
-        self.statusBar().showMessage('%s started.' % __appname__)
+        self.statusBar().showMessage('{} started.'.format(__app_name__))
         self.statusBar().show()
 
         # Application state.
@@ -326,9 +327,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.comboBox.cb.clear()
 
     def showInfoDialog(self):
-        from libs.__init__ import __version__
-        msg = u'Name:{0} \nApp Version:{1} \n{2} '.format(__appname__, __version__, sys.version_info)
-        QMessageBox.information(self, u'Information', msg)
+        msg = '{0}\nversion : {1}'.format(__app_name__, __app_version__)
+        QMessageBox.information(self, 'Information', msg)
 
     def setEditKeypointMode(self):
         self.actions.editKeypointMode.setChecked(True)
@@ -499,25 +499,8 @@ class MainWindow(QMainWindow, WindowMixin):
         return w / self.canvas.pixmap.width()
 
     def closeEvent(self, event):
-        if not self.mayContinue():
-            event.ignore()
-        self.settings[SETTING_WIN_SIZE] = self.size()
-        self.settings[SETTING_WIN_POSE] = self.pos()
-        self.settings[SETTING_WIN_STATE] = self.saveState()
-        self.settings[SETTING_RECENT_FILES] = self.recentFiles
-        if self.defaultSaveDir and os.path.exists(self.defaultSaveDir):
-            self.settings[SETTING_SAVE_DIR] = ustr(self.defaultSaveDir)
-        else:
-            self.settings[SETTING_SAVE_DIR] = ''
-        if self.lastOpenDir and os.path.exists(self.lastOpenDir):
-            self.settings[SETTING_LAST_OPEN_DIR] = self.lastOpenDir
-        else:
-            self.settings[SETTING_LAST_OPEN_DIR] = ''
-        self.settings[SETTING_AUTO_SAVE] = self.autoSaving.isChecked()
-        self.settings[SETTING_SINGLE_CLASS] = self.singleClassMode.isChecked()
-        self.settings[SETTING_PAINT_LABEL] = self.displayLabelOption.isChecked()
-        self.settings[SETTING_DRAW_SQUARE] = self.drawSquaresOption.isChecked()
-        self.settings[SETTING_LABEL_FILE_FORMAT] = self.labelFileFormat
+        # if not self.mayContinue():
+        #     event.ignore()
         self.settings.save()
 
     def openImageDir(self, _value=False):
@@ -527,7 +510,7 @@ class MainWindow(QMainWindow, WindowMixin):
             defaultDir = '.'
         self.imageDir = ustr(
             QFileDialog.getExistingDirectory(
-                self, '%s - Open Directory' % __appname__, defaultDir,
+                self, '{} - Open Directory'.format(__app_name__), defaultDir,
                 QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks))
 
     def newFile(self, _value=False):
@@ -632,7 +615,7 @@ def get_main_app(argv=[]):
     Do everything but app.exec_() -- so that we can test the application in one thread
     """
     app = QApplication(argv)
-    app.setApplicationName(__appname__)
+    app.setApplicationName(__app_name__)
     app.setWindowIcon(QIcon(osp.join('resources', 'icons', 'app.png')))
     # Tzutalin 201705+: Accept extra agruments to change predefined class file
     argparser = argparse.ArgumentParser()
