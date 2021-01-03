@@ -47,6 +47,9 @@ class Matching:
         self._view_idx_j = None
         self._match_idx = None
 
+        self._dirty = False
+        self._dirty_callback = None
+
     def paint(self, painter, scale):
         pen = QPen(self.keypoint_default_fill_color)
         pen.setWidth(max(1, int(round(2.0 / scale))))
@@ -118,9 +121,11 @@ class Matching:
 
     def append_keypoint_in_view_i(self, x, y):
         self.data['views'][self._view_idx_i]['keypoints'].append([x, y])
+        self.set_dirty()
 
     def append_keypoint_in_view_j(self, x, y):
         self.data['views'][self._view_idx_j]['keypoints'].append([x, y])
+        self.set_dirty()
 
     def append_match(self, keypoint_idx_i, keypoint_idx_j):
         if self._match_idx is not None:
@@ -131,6 +136,7 @@ class Matching:
             self.data['matches'][self._match_idx]['match'].append([keypoint_idx_i, keypoint_idx_j])
         else:
             raise RuntimeWarning('This view pair is not registered.')
+        self.set_dirty()
 
     def set_keypoint_pos_in_view_i(self, idx, x, y):
         self.data['views'][self._view_idx_i]['keypoints'][idx] = [x, y]
@@ -193,6 +199,23 @@ class Matching:
         self.selected_idx_i = None
         self.highlighted_idx_j = None
         self.selected_idx_j = None
+
+    def save(self, file_path):
+        with open(file_path, 'w') as f:
+            json.dump(self.data, f)
+        self._dirty = False
+
+    def dirty(self):
+        return self._dirty
+
+    def set_dirty(self):
+        if not self._dirty:
+            self._dirty = True
+            if self._dirty_callback:
+                self._dirty_callback()
+
+    def set_dirty_callback(self, f):
+        self._dirty_callback = f
 
     @staticmethod
     def empty(keypoints):

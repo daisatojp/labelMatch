@@ -62,14 +62,6 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.imageDir = None
         self.savePath = None
-        self.img_i_w, self.img_i_h = None, None
-        self.img_j_w, self.img_j_h = None, None
-
-        # Whether we need to save or not.
-        self.dirty = False
-
-        listLayout = QVBoxLayout()
-        listLayout.setContentsMargins(0, 0, 0, 0)
 
         self.pairListWidget = QListWidget()
         self.pairListWidget.itemDoubleClicked.connect(self.pairitemDoubleClicked)
@@ -112,8 +104,7 @@ class MainWindow(QMainWindow, WindowMixin):
         scroll.setWidgetResizable(True)
         self.scrollBars = {
             Qt.Vertical: scroll.verticalScrollBar(),
-            Qt.Horizontal: scroll.horizontalScrollBar()
-        }
+            Qt.Horizontal: scroll.horizontalScrollBar()}
         self.scrollArea = scroll
         self.canvas.scrollRequest.connect(self.scrollRequest)
 
@@ -124,54 +115,51 @@ class MainWindow(QMainWindow, WindowMixin):
         self.filedockI.setFeatures(QDockWidget.DockWidgetFloatable)
         self.filedockJ.setFeatures(QDockWidget.DockWidgetFloatable)
 
-        # Actions
-        action = partial(newAction, self)
-
         # File menu
-        openDir = action(
-            getStr('openDir'), self.openImageDir,
+        openDir = newAction(
+            self, getStr('openDir'), self.openImageDir,
             'Ctrl+u', 'open', getStr('openDirDetail'))
-        newFile = action(
-            getStr('newFile'), self.newFile,
+        newFile = newAction(
+            self, getStr('newFile'), self.newFile,
             'Ctrl+N', 'open', getStr('newFileDetail'))
-        openFile = action(
-            getStr('openFile'), self.openFile,
+        openFile = newAction(
+            self, getStr('openFile'), self.openFile,
             'Ctrl+O', 'open', getStr('openFileDetail'))
-        saveFile = action(
-            getStr('saveFile'), self.saveFile,
+        saveFile = newAction(
+            self, getStr('saveFile'), self.saveFile,
             'Ctrl+S', 'save', getStr('saveFileDetail'), enabled=False)
-        closeFile = action(
-            getStr('closeFile'), self.closeFile,
+        closeFile = newAction(
+            self, getStr('closeFile'), self.closeFile,
             'Ctrl+W', 'close', getStr('closeFileDetail'))
-        quitApp = action(
-            getStr('quitApp'), self.close,
+        quitApp = newAction(
+            self, getStr('quitApp'), self.close,
             'Ctrl+Q', 'quit', getStr('quitApp'))
-        openNextPair = action(
-            getStr('openNextPair'), self.openNextPair,
+        openNextPair = newAction(
+            self, getStr('openNextPair'), self.openNextPair,
             'd', 'next', getStr('openNextPairDetail'))
-        openPrevPair = action(
-            getStr('openPrevPair'), self.openPrevPair,
+        openPrevPair = newAction(
+            self, getStr('openPrevPair'), self.openPrevPair,
             'a', 'prev', getStr('openPrevPairDetail'))
 
         # View menu
-        self.autoSaving = QAction(getStr('autoSaveMode'), self)
-        self.autoSaving.setCheckable(True)
-        self.autoSaving.setChecked(self.settings.get(SETTING_AUTO_SAVE, False))
-        zoomIn = action(
-            getStr('zoomIn'), partial(self.addZoom, 10),
+        autoSaving = QAction(getStr('autoSaveMode'), self)
+        autoSaving.setCheckable(True)
+        autoSaving.setChecked(self.settings.get(SETTING_AUTO_SAVE, False))
+        zoomIn = newAction(
+            self, getStr('zoomIn'), partial(self.addZoom, 10),
             'Ctrl++', 'zoom-in', getStr('zoomInDetail'), enabled=False)
-        zoomOut = action(
-            getStr('zoomOut'), partial(self.addZoom, -10),
+        zoomOut = newAction(
+            self, getStr('zoomOut'), partial(self.addZoom, -10),
             'Ctrl+-', 'zoom-out', getStr('zoomOutDetail'), enabled=False)
-        zoomOrg = action(
-            getStr('zoomOrgSize'), partial(self.setZoom, 100),
+        zoomOrg = newAction(
+            self, getStr('zoomOrgSize'), partial(self.setZoom, 100),
             'Ctrl+=', 'zoom', getStr('zoomOrgSizeDetail'), enabled=False)
-        fitWindow = action(
-            getStr('fitWindow'), self.setFitWindow,
+        fitWindow = newAction(
+            self, getStr('fitWindow'), self.setFitWindow,
             'Ctrl+F', 'fit-window', getStr('fitWindowDetail'),
             checkable=True, enabled=False)
-        fitWidth = action(
-            getStr('fitWidth'), self.setFitWidth,
+        fitWidth = newAction(
+            self, getStr('fitWidth'), self.setFitWidth,
             'Ctrl+Shift+F', 'fit-width', getStr('fitWidthDetail'),
             checkable=True, enabled=False)
 
@@ -190,8 +178,8 @@ class MainWindow(QMainWindow, WindowMixin):
         editMatchMode.setShortcut('e')
 
         # Help Menu
-        showInfo = action(
-            getStr('showInfo'), self.showInfoDialog,
+        showInfo = newAction(
+            self, getStr('showInfo'), self.showInfoDialog,
             None, 'help', getStr('showInfoDetail'))
 
         self.zoomWidget = ZoomWidget()
@@ -210,7 +198,6 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.newFileDialog = NewFileDialog(self)
 
-        # Store actions for further handling.
         self.actions = struct(
             openDir=openDir,
             newFile=newFile,
@@ -219,15 +206,13 @@ class MainWindow(QMainWindow, WindowMixin):
             closeFile=closeFile,
             editKeypointMode=editKeypointMode,
             editMatchMode=editMatchMode,
+            autoSaving=autoSaving,
             zoom=zoom,
             zoomIn=zoomIn,
             zoomOut=zoomOut,
             zoomOrg=zoomOrg,
             fitWindow=fitWindow,
-            fitWidth=fitWidth,
-            fileMenuActions=(openDir, newFile, openFile, saveFile, closeFile, quitApp),
-            editMenu=tuple(),
-            onLoadActive=tuple())
+            fitWidth=fitWidth)
 
         self.menus = struct(
             file=self.menu('&File'),
@@ -244,7 +229,7 @@ class MainWindow(QMainWindow, WindowMixin):
             (editKeypointMode, editMatchMode))
         addActions(
             self.menus.view,
-            (self.autoSaving, None,
+            (autoSaving, None,
              zoomIn, zoomOut, zoomOrg, None,
              fitWindow, fitWidth))
         addActions(
@@ -255,7 +240,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.tools = self.toolbar('Tools')
         addActions(
             self.tools,
-            (openDir, openFile, openNextPair, openPrevPair,
+            (openDir, openFile, saveFile,
+             openNextPair, openPrevPair,
              zoomIn, zoom, zoomOut, fitWindow, fitWidth))
 
         self.statusBar().showMessage('{} started.'.format(__app_name__))
@@ -278,19 +264,9 @@ class MainWindow(QMainWindow, WindowMixin):
                 break
         self.resize(size)
         self.move(position)
-        saveDir = ustr(self.settings.get(SETTING_SAVE_DIR, None))
         self.lastOpenDir = ustr(self.settings.get(SETTING_LAST_OPEN_DIR, None))
 
         self.restoreState(self.settings.get(SETTING_WIN_STATE, QByteArray()))
-
-        def xbool(x):
-            if isinstance(x, QVariant):
-                return x.toBool()
-            return bool(x)
-
-        if xbool(self.settings.get(SETTING_ADVANCE_MODE, False)):
-            self.actions.advancedMode.setChecked(True)
-            self.toggleAdvancedMode()
 
         # Callbacks:
         self.zoomWidget.valueChanged.connect(self.paintCanvas)
@@ -301,30 +277,9 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def keyReleaseEvent(self, ev):
         pass
-        # if event.key() == Qt.Key_Control:
-        #     self.canvas.setDrawingShapeToSquare(False)
 
     def keyPressEvent(self, ev):
         pass
-        # if event.key() == Qt.Key_Control:
-        #     # Draw rectangle if Ctrl is pressed
-        #     self.canvas.setDrawingShapeToSquare(True)
-
-    def setDirty(self):
-        self.dirty = True
-
-    def setClean(self):
-        self.dirty = False
-
-    def resetState(self):
-        self.itemsToShapes.clear()
-        self.shapesToItems.clear()
-        self.labelList.clear()
-        self.imageDir = None
-        self.savePath = None
-        self.canvas.resetState()
-        self.labelCoordinates.clear()
-        self.comboBox.cb.clear()
 
     def showInfoDialog(self):
         msg = '{0}\nversion : {1}'.format(__app_name__, __app_version__)
@@ -391,11 +346,9 @@ class MainWindow(QMainWindow, WindowMixin):
         # calculate the percentages ~ coordinates
         h_bar = self.scrollBars[Qt.Horizontal]
         v_bar = self.scrollBars[Qt.Vertical]
-
         # get the current maximum, to know the difference after zooming
         h_bar_max = h_bar.maximum()
         v_bar_max = v_bar.maximum()
-
         # get the cursor position and canvas size
         # calculate the desired movement from 0 to 1
         # where 0 = move left
@@ -404,37 +357,29 @@ class MainWindow(QMainWindow, WindowMixin):
         cursor = QCursor()
         pos = cursor.pos()
         relative_pos = QWidget.mapFromGlobal(self, pos)
-
         cursor_x = relative_pos.x()
         cursor_y = relative_pos.y()
-
         w = self.scrollArea.width()
         h = self.scrollArea.height()
-
         # the scaling from 0 to 1 has some padding
         # you don't have to hit the very leftmost pixel for a maximum-left movement
         margin = 0.1
         move_x = (cursor_x - margin * w) / (w - 2 * margin * w)
         move_y = (cursor_y - margin * h) / (h - 2 * margin * h)
-
         # clamp the values from 0 to 1
         move_x = min(max(move_x, 0), 1)
         move_y = min(max(move_y, 0), 1)
-
         # zoom in
         units = delta / (8 * 15)
         scale = 10
         self.addZoom(scale * units)
-
         # get the difference in scrollbar values
         # this is how far we can move
         d_h_bar_max = h_bar.maximum() - h_bar_max
         d_v_bar_max = v_bar.maximum() - v_bar_max
-
         # get the new scrollbar values
         new_h_bar_value = h_bar.value() + move_x * d_h_bar_max
         new_v_bar_value = v_bar.value() + move_y * d_v_bar_max
-
         h_bar.setValue(new_h_bar_value)
         v_bar.setValue(new_v_bar_value)
 
@@ -450,8 +395,9 @@ class MainWindow(QMainWindow, WindowMixin):
         self.zoomMode = self.FIT_WIDTH if value else self.MANUAL_ZOOM
         self.adjustScale()
 
-    def loadFile(self, filePath):
-        self.matching = Matching(filePath, self.imageDir)
+    def loadMatching(self, data):
+        self.matching = Matching(data, self.imageDir)
+        self.matching.set_dirty_callback(self.getDirtyEvent)
         self.canvas.setMatching(self.matching)
         self.pairListWidget.clear()
         self.fileListWidgetI.clear()
@@ -519,7 +465,7 @@ class MainWindow(QMainWindow, WindowMixin):
             return
         if not self.mayContinue():
             return
-        filePath = self.newFileDialog.popUp()
+        self.savePath = self.newFileDialog.popUp()
         x = {'matches': [], 'views': []}
         image_paths = self._scan_all_images(self.imageDir)
         for i in range(len(image_paths)):
@@ -530,7 +476,8 @@ class MainWindow(QMainWindow, WindowMixin):
                 'id_view': i,
                 'filename': image_path[len(self.imageDir) + len(os.sep):].split(os.sep),
                 'keypoints': []})
-        self._save_file(x, filePath)
+        self.loadMatching(x)
+        self.matching.save(self.savePath)
 
     def openFile(self, _value=False):
         if not self.mayContinue():
@@ -543,39 +490,49 @@ class MainWindow(QMainWindow, WindowMixin):
             if isinstance(filename, (tuple, list)):
                 filename = filename[0]
             if osp.exists(filename):
-                self.loadFile(filename)
+                self.savePath = filename
+                self.loadMatching(filename)
             else:
                 QMessageBox.warning(self, 'Attention', 'File Not Found', QMessageBox.Ok)
                 return
 
     def saveFile(self, _value=False):
         if self.savePath:
-            self._saveFile(self.savePath)
+            self.matching.save(self.savePath)
+            self.actions.saveFile.setEnabled(False)
 
     def closeFile(self, _value=False):
         if not self.mayContinue():
             return
 
     def openNextPair(self, _value=False):
-        if self.autoSaving.isChecked():
-            if self.dirty is True:
-                if self.savePath:
-                    self._save_file(obj, self.savePath)
-        if not self.mayContinue():
-            return
+        if self.actions.autoSaving.isChecked():
+            self.matching.save(self.savePath)
 
     def openPrevPair(self, _value=False):
-        if self.autoSaving.isChecked():
-            if self.dirty is True:
-                if self.savePath:
-                    self._save_file(obj, self.savePath)
-        if not self.mayContinue():
-            return
+        if self.actions.autoSaving.isChecked():
+            self.matching.save(self.savePath)
 
-    @staticmethod
-    def _save_file(obj, path):
-        with open(path, 'w') as f:
-            json.dump(obj, f)
+    def getDirtyEvent(self):
+        self.actions.saveFile.setEnabled(True)
+
+    def mayContinue(self):
+        if self.matching is not None:
+            if self.matching.dirty():
+                saveChanges = self.saveChangesDialog()
+                if saveChanges == QMessageBox.Yes:
+                    self.matching.save(self.savePath)
+                    return True
+                elif saveChanges == QMessageBox.No:
+                    return True
+                else:
+                    return False
+        return True
+
+    def saveChangesDialog(self):
+        yes, no, cancel = QMessageBox.Yes, QMessageBox.No, QMessageBox.Cancel
+        msg = u'You have unsaved changes, would you like to save them and proceed?'
+        return QMessageBox.warning(self, u'Attention', msg, yes | no | cancel)
 
     @staticmethod
     def _scan_all_images(root_dir):
@@ -589,24 +546,6 @@ class MainWindow(QMainWindow, WindowMixin):
                     image_paths.append(path)
         natural_sort(image_paths, key=lambda x: x.lower())
         return image_paths
-
-    def mayContinue(self):
-        if not self.dirty:
-            return True
-        else:
-            discardChanges = self.discardChangesDialog()
-            if discardChanges == QMessageBox.No:
-                return True
-            elif discardChanges == QMessageBox.Yes:
-                self.saveFile()
-                return True
-            else:
-                return False
-
-    def discardChangesDialog(self):
-        yes, no, cancel = QMessageBox.Yes, QMessageBox.No, QMessageBox.Cancel
-        msg = u'You have unsaved changes, would you like to save them and proceed?'
-        return QMessageBox.warning(self, u'Attention', msg, yes | no | cancel)
 
 
 def get_main_app(argv=[]):
