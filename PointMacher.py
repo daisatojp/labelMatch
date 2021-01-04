@@ -168,13 +168,13 @@ class MainWindow(QMainWindow, WindowMixin):
         editKeypointMode.triggered.connect(self.setEditKeypointMode)
         editKeypointMode.setEnabled(True)
         editKeypointMode.setCheckable(True)
-        editKeypointMode.setChecked(False)
+        editKeypointMode.setChecked(True)
         editKeypointMode.setShortcut('v')
         editMatchMode = QAction(getStr('editMatch'), self)
         editMatchMode.triggered.connect(self.setEditMatchMode)
         editMatchMode.setEnabled(True)
         editMatchMode.setCheckable(True)
-        editMatchMode.setChecked(True)
+        editMatchMode.setChecked(False)
         editMatchMode.setShortcut('e')
 
         # Help Menu
