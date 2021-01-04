@@ -2,7 +2,7 @@
 
  PointMatcher is a graphical corresponding point annotation tool. In computer vision, normally we decide correspondences of points automatically by a feature point extraction algorithm (e.g. SIFT) and a feature matching algorithm (e.g. Brute Force). But when you want to do it manually, you can use this tool!
 
-<p align="center"><img src="demo/main_window.jpg" alt="demo image"></img></p>
+<p align="center"><img src="demo/main_window.jpg" alt="demo image" width="460"></img></p>
 
 ## Requirements
 
@@ -41,9 +41,9 @@ If you don't have annotation file (matching file)
 
 If you have annotation file
 
-1. Click "Open Dir" from toolbox
+1. click "Open Dir" from toolbox
 2. choose directory that stores images
-3. Click "Open File" from toolbox
+3. click "Open File" from toolbox
 4. choose annotation file
 5. let's annotation
 
