@@ -36,6 +36,7 @@ class Matching:
         self.highlighted_idx_j = None
         self.selected_idx_i = None
         self.selected_idx_j = None
+        self.highlighted_match_idx = None
         self.draw_offset_i_x = 0
         self.draw_offset_i_y = 0
         self.draw_offset_j_x = 0
@@ -116,24 +117,6 @@ class Matching:
 
     def get_pair_idx(self):
         return self._pair_idx
-
-    def get_match_idx_in_view_i(self, keypoint_idx):
-        if self._pair_idx is None:
-            return None
-        arr = [m[0] == keypoint_idx for m in self.data['pairs'][self._pair_idx]['matches']]
-        if any(arr):
-            return arr.index(True)
-        else:
-            return None
-
-    def get_match_idx_in_view_j(self, keypoint_idx):
-        if self._pair_idx is None:
-            return None
-        arr = [m[1] == keypoint_idx for m in self.data['pairs'][self._pair_idx]['matches']]
-        if any(arr):
-            return arr.index(True)
-        else:
-            return None
 
     def get_keypoints_count(self, view_id):
         view_idx = self.find_view_idx(view_id)
@@ -301,11 +284,30 @@ class Matching:
         else:
             return None
 
-    def clear_keypoint_decoration(self):
+    def find_match_idx_in_view_i(self, keypoint_idx):
+        if self._pair_idx is None:
+            return None
+        arr = [m[0] == keypoint_idx for m in self.data['pairs'][self._pair_idx]['matches']]
+        if any(arr):
+            return arr.index(True)
+        else:
+            return None
+
+    def find_match_idx_in_view_j(self, keypoint_idx):
+        if self._pair_idx is None:
+            return None
+        arr = [m[1] == keypoint_idx for m in self.data['pairs'][self._pair_idx]['matches']]
+        if any(arr):
+            return arr.index(True)
+        else:
+            return None
+
+    def clear_decoration(self):
         self.highlighted_idx_i = None
         self.selected_idx_i = None
         self.highlighted_idx_j = None
         self.selected_idx_j = None
+        self.highlighted_match_idx = None
 
     def save(self, file_path):
         with open(file_path, 'w') as f:
