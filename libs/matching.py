@@ -170,14 +170,18 @@ class Matching:
         self.set_update()
         self.set_dirty()
 
-    def append_pair(self, view_id_i, view_id_j):
+    def append_pair(self, view_id_i, view_id_j, update=True):
         if self.find_pair_idx(view_id_i, view_id_j) is None:
             self.data['pairs'].append({
                 'id_view_i': view_id_i,
                 'id_view_j': view_id_j,
                 'matches': []})
-            self.set_update()
+            if update:
+                self.set_update()
             self.set_dirty()
+            return True
+        else:
+            return False
 
     def append_match(self, keypoint_idx_i, keypoint_idx_j):
         if self._pair_idx is not None:
@@ -228,6 +232,17 @@ class Matching:
                         self.data['pairs'][i]['matches'][j][1] -= 1
         self.set_update()
         self.set_dirty()
+
+    def remove_pair(self, view_id_i, view_id_j):
+        if (view_id_i, view_id_j) == (self._view_id_i, self._view_id_j):
+            raise RuntimeError('invelid view_id_i and view_id_j')
+        idx = self.find_pair_idx(view_id_i, view_id_j)
+        if idx is not None:
+            self.data['pairs'].pop(idx)
+            self.set_view(self._view_id_i, self._view_id_j)
+            self.set_update()
+            self.set_dirty()
+
 
     def empty_i(self):
         return len(self.data['views'][self._view_idx_i]['keypoints']) == 0

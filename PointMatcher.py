@@ -165,6 +165,9 @@ class MainWindow(QMainWindow, WindowMixin):
         addPair = newAction(
             self, getStr('addPair'), self.addPair,
             'Ctrl+X', 'save', getStr('addPairDetail'), enabled=False)
+        removePair = newAction(
+            self, getStr('removePair'), self.removePair,
+            'Ctrl+C', 'delete', getStr('removePairDetail'), enabled=False)
         editKeypointMode = QAction(getStr('editKeypoint'), self)
         editKeypointMode.triggered.connect(self.editKeypointMode)
         editKeypointMode.setEnabled(True)
@@ -208,6 +211,7 @@ class MainWindow(QMainWindow, WindowMixin):
             openNextPair=openNextPair,
             openPrevPair=openPrevPair,
             addPair=addPair,
+            removePair=removePair,
             editKeypointMode=editKeypointMode,
             editMatchMode=editMatchMode,
             autoSaving=autoSaving,
@@ -230,12 +234,12 @@ class MainWindow(QMainWindow, WindowMixin):
             (openDir, newFile, openFile, saveFile, closeFile, quitApp))
         addActions(
             self.menus.edit,
-            (addPair, None, editKeypointMode, editMatchMode))
+            (addPair, removePair, None, editKeypointMode, editMatchMode))
         addActions(
             self.menus.view,
-            (autoSaving, None,
-             zoomIn, zoomOut, zoomOrg, None,
-             fitWindow, fitWidth))
+            (autoSaving,
+             None, zoomIn, zoomOut, zoomOrg,
+             None, fitWindow, fitWidth))
         addActions(
             self.menus.help,
             (showInfo,))
@@ -245,8 +249,8 @@ class MainWindow(QMainWindow, WindowMixin):
         addActions(
             self.tools,
             (openDir, openFile, saveFile,
-             None, addPair, openNextPair, openPrevPair,
-             zoomIn, zoom, zoomOut, fitWindow, fitWidth))
+             None, addPair, removePair, openNextPair, openPrevPair,
+             None, zoomIn, zoom, zoomOut, fitWindow, fitWidth))
 
         self.statusBar().showMessage('{} started.'.format(__app_name__))
         self.statusBar().show()
@@ -281,9 +285,9 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def pairitemDoubleClicked(self, item=None):
         idx = self.pairListWidget.currentIndex().row()
-        if idx < len(self.matching.get_matches()):
-            view_id_i = self.matching.get_matches()[idx]['id_view_i']
-            view_id_j = self.matching.get_matches()[idx]['id_view_j']
+        if idx < len(self.matching.get_pairs()):
+            view_id_i = self.matching.get_pairs()[idx]['id_view_i']
+            view_id_j = self.matching.get_pairs()[idx]['id_view_j']
             self.changePair(view_id_i, view_id_j)
 
     def viewitemDoubleClickedI(self, item=None):
@@ -303,12 +307,14 @@ class MainWindow(QMainWindow, WindowMixin):
         if pair_idx is not None:
             self.pairListWidget.setCurrentRow(pair_idx)
             self.actions.addPair.setEnabled(False)
+            self.actions.removePair.setEnabled(True)
             self.actions.openNextPair.setEnabled(True)
             self.actions.openPrevPair.setEnabled(True)
         else:
             self.pairListWidget.addItem('None ({}, {})'.format(view_id_i, view_id_j))
             self.pairListWidget.setCurrentRow(self.pairListWidget.count()-1)
             self.actions.addPair.setEnabled(True)
+            self.actions.removePair.setEnabled(False)
             self.actions.openNextPair.setEnabled(False)
             self.actions.openPrevPair.setEnabled(False)
         self.matching.set_view(view_id_i, view_id_j)
@@ -505,12 +511,25 @@ class MainWindow(QMainWindow, WindowMixin):
         self.changePair(view_id_i, view_id_j)
 
     def addPair(self):
-        view_id_i = self.matching.get_views()[self.fileListWidgetI.currentIndex().row()]['id_view']
-        view_id_j = self.matching.get_views()[self.fileListWidgetJ.currentIndex().row()]['id_view']
-        self.matching.append_pair(view_id_i, view_id_j)
+        view_id_i = self.matching.get_views()[self.viewListWidgetI.currentIndex().row()]['id_view']
+        view_id_j = self.matching.get_views()[self.viewListWidgetJ.currentIndex().row()]['id_view']
+        self.matching.append_pair(view_id_i, view_id_j, update=False)
         self.pairListWidget.item(self.pairListWidget.count() - 1).setText(
             self.getPairItemText(view_id_i, view_id_j))
         self.changePair(view_id_i, view_id_j)
+
+    def removePair(self):
+        view_id_i = self.matching.get_view_id_i()
+        view_id_j = self.matching.get_view_id_j()
+        trans_view_id_i, trans_view_id_j = self.matching.get_prev_view_pair()
+        if (trans_view_id_i, trans_view_id_j) == (view_id_i, view_id_j):
+            trans_view_id_i, trans_view_id_j = self.matching.get_next_view_pair()
+        if (trans_view_id_i, trans_view_id_j) == (view_id_i, view_id_j):
+            trans_view_id_i = self.matching.get_views()[0]['id_view']
+            trans_view_id_j = self.matching.get_views()[1]['id_view']
+        self.pairListWidget.takeItem(self.matching.get_pair_idx())
+        self.changePair(trans_view_id_i, trans_view_id_j)
+        self.matching.remove_pair(view_id_i, view_id_j)
 
     def editKeypointMode(self):
         self.actions.editKeypointMode.setChecked(True)
@@ -533,8 +552,9 @@ class MainWindow(QMainWindow, WindowMixin):
             self.getViewItemText(view_id_i))
         self.viewListWidgetJ.item(self.matching.get_view_idx_j()).setText(
             self.getViewItemText(view_id_j))
-        self.pairListWidget.item(self.matching.get_pair_idx()).setText(
-            self.getPairItemText(view_id_i, view_id_j))
+        pair_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
+        if pair_idx is not None:
+            self.pairListWidget.item(pair_idx).setText(self.getPairItemText(view_id_i, view_id_j))
 
     def getMatchingDirtyEvent(self):
         self.actions.saveFile.setEnabled(True)
