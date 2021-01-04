@@ -80,7 +80,7 @@ If you have annotation file
 
 ## License
 
-[MIT license] (https://github.com/daisatojp/PointMatcher/blob/master/LICENSE)
+[MIT license](https://github.com/daisatojp/PointMatcher/blob/master/LICENSE)
 
 ## Acknowledgment
 
