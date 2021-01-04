@@ -117,6 +117,24 @@ class Matching:
     def get_pair_idx(self):
         return self._pair_idx
 
+    def get_match_idx_in_view_i(self, keypoint_idx):
+        if self._pair_idx is None:
+            return None
+        arr = [m[0] == keypoint_idx for m in self.data['pairs'][self._pair_idx]['matches']]
+        if any(arr):
+            return arr.index(True)
+        else:
+            return None
+
+    def get_match_idx_in_view_j(self, keypoint_idx):
+        if self._pair_idx is None:
+            return None
+        arr = [m[1] == keypoint_idx for m in self.data['pairs'][self._pair_idx]['matches']]
+        if any(arr):
+            return arr.index(True)
+        else:
+            return None
+
     def get_keypoints_count(self, view_id):
         view_idx = self.find_view_idx(view_id)
         if view_idx is None:
@@ -160,6 +178,16 @@ class Matching:
         self._view_idx_j = self.find_view_idx(view_id_j)
         self._pair_idx = self.find_pair_idx(view_id_i, view_id_j)
 
+    def set_keypoint_pos_in_view_i(self, idx, x, y):
+        self.data['views'][self._view_idx_i]['keypoints'][idx] = [x, y]
+        self.set_update()
+        self.set_dirty()
+
+    def set_keypoint_pos_in_view_j(self, idx, x, y):
+        self.data['views'][self._view_idx_j]['keypoints'][idx] = [x, y]
+        self.set_update()
+        self.set_dirty()
+
     def append_keypoint_in_view_i(self, x, y):
         self.data['views'][self._view_idx_i]['keypoints'].append([x, y])
         self.set_update()
@@ -195,16 +223,6 @@ class Matching:
         self.set_update()
         self.set_dirty()
 
-    def set_keypoint_pos_in_view_i(self, idx, x, y):
-        self.data['views'][self._view_idx_i]['keypoints'][idx] = [x, y]
-        self.set_update()
-        self.set_dirty()
-
-    def set_keypoint_pos_in_view_j(self, idx, x, y):
-        self.data['views'][self._view_idx_j]['keypoints'][idx] = [x, y]
-        self.set_update()
-        self.set_dirty()
-
     def remove_keypoint_in_view_i(self, idx):
         self.remove_keypoint(self._view_id_i, idx)
         # update and dirty is called in remove_keypoint
@@ -214,7 +232,7 @@ class Matching:
         # update and dirty is called in remove_keypoint
 
     def remove_keypoint(self, view_id, idx):
-        view_idx = Matching.find_view_idx(view_id)
+        view_idx = self.find_view_idx(view_id)
         keypoints = self.data['views'][view_idx]['keypoints']
         self.data['views'][view_idx]['keypoints'] = keypoints[:idx] + keypoints[idx+1:]
         for i in range(len(self.data['pairs'])):
@@ -243,6 +261,12 @@ class Matching:
             self.set_update()
             self.set_dirty()
 
+    def remove_match(self, match_idx):
+        if self._pair_idx is None:
+            raise RuntimeError('runtime error at remove_match')
+        self.data['pairs'][self._pair_idx]['matches'].pop(match_idx)
+        self.set_update()
+        self.set_dirty()
 
     def empty_i(self):
         return len(self.data['views'][self._view_idx_i]['keypoints']) == 0

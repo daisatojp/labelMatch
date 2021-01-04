@@ -182,6 +182,20 @@ class Canvas(QWidget):
                 if val < self.epsilon / self.scale:
                     self.matching.remove_keypoint_in_view_j(idx)
 
+        if self.mode == self.MODE_EDIT_MATCH:
+            if posInViewI:
+                val, keypoint_idx = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
+                if val < self.epsilon / self.scale:
+                    match_idx = self.matching.get_match_idx_in_view_i(keypoint_idx)
+                    if match_idx is not None:
+                        self.matching.remove_match(match_idx)
+            if posInViewJ:
+                val, keypoint_idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
+                if val < self.epsilon / self.scale:
+                    match_idx = self.matching.get_match_idx_in_view_j(keypoint_idx)
+                    if match_idx is not None:
+                        self.matching.remove_match(match_idx)
+
         self.update()
 
     def setMatching(self, matching):
