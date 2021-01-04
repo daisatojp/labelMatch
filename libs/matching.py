@@ -237,17 +237,24 @@ class Matching:
         self.data['views'][view_idx]['keypoints'] = keypoints[:idx] + keypoints[idx+1:]
         for i in range(len(self.data['pairs'])):
             if self.data['pairs'][i]['id_view_i'] == view_id:
-                for j in range(len(self.data['pairs'][i]['matches'])):
+                j = 0
+                while j < len(self.data['pairs'][i]['matches']):
                     if self.data['pairs'][i]['matches'][j][0] == idx:
                         self.data['pairs'][i]['matches'].pop(j)
+                        continue
                     if self.data['pairs'][i]['matches'][j][0] > idx:
                         self.data['pairs'][i]['matches'][j][0] -= 1
+                    j += 1
             if self.data['pairs'][i]['id_view_j'] == view_id:
-                for j in range(len(self.data['pairs'][i]['matches'])):
+                j = 0
+                while j < len(self.data['pairs'][i]['matches']):
                     if self.data['pairs'][i]['matches'][j][1] == idx:
                         self.data['pairs'][i]['matches'].pop(j)
+                        continue
                     if self.data['pairs'][i]['matches'][j][1] > idx:
                         self.data['pairs'][i]['matches'][j][1] -= 1
+                    j += 1
+
         self.set_update()
         self.set_dirty()
 
