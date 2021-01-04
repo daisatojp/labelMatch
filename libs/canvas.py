@@ -115,14 +115,16 @@ class Canvas(QWidget):
         if self.mode == self.MODE_EDIT_KEYPOINT:
             if ev.button() == Qt.LeftButton:
                 if posInViewI:
-                    if self.matching.highlighted_idx_i is not None:
-                        self.matching.selected_idx_i = self.matching.highlighted_idx_i
+                    val, idx = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
+                    if val < self.epsilon / self.scale:
+                        self.matching.selected_idx_i = idx
                         self.matching.highlighted_idx_i = None
                     else:
                         self.matching.append_keypoint_in_view_i(posInViewI[0], posInViewI[1])
                 if posInViewJ:
-                    if self.matching.highlighted_idx_j is not None:
-                        self.matching.selected_idx_j = self.matching.highlighted_idx_j
+                    val, idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
+                    if val < self.epsilon / self.scale and self.matching.selected_idx_j != idx:
+                        self.matching.selected_idx_j = idx
                         self.matching.highlighted_idx_j = None
                     else:
                         self.matching.append_keypoint_in_view_j(posInViewJ[0], posInViewJ[1])
