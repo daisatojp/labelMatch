@@ -405,8 +405,12 @@ class MainWindow(QMainWindow, WindowMixin):
         for pair in self.matching.get_pairs():
             self.pairListWidget.addItem(self.getPairItemText(
                 pair['id_view_i'], pair['id_view_j']))
-        view_id_i = self.matching.get_pairs()[0]['id_view_i']
-        view_id_j = self.matching.get_pairs()[0]['id_view_j']
+        if 0 < len(self.matching.get_pairs()):
+            view_id_i = self.matching.get_pairs()[0]['id_view_i']
+            view_id_j = self.matching.get_pairs()[0]['id_view_j']
+        else:
+            view_id_i = self.matching.get_views()[0]['id_view']
+            view_id_j = self.matching.get_views()[1]['id_view']
         self.changePair(view_id_i, view_id_j)
 
     def resizeEvent(self, event):
