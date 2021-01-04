@@ -11,7 +11,6 @@ from functools import partial
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from libs.constants import *
 from libs.utils import *
 from libs.settings import Settings
 from libs.matching import Matching
@@ -20,7 +19,6 @@ from libs.canvas import Canvas
 from libs.zoomWidget import ZoomWidget
 from libs.newFileDialog import NewFileDialog
 from libs.toolBar import ToolBar
-from libs.ustr import ustr
 
 __app_name__ = 'PointMatcher'
 __app_version__ = '1.0.0'
@@ -117,7 +115,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
         # File menu
         openDir = newAction(
-            self, getStr('openDir'), self.openImageDir,
+            self, getStr('openDir'), self.openDir,
             'Ctrl+u', 'open', getStr('openDirDetail'))
         newFile = newAction(
             self, getStr('newFile'), self.newFile,
@@ -136,15 +134,15 @@ class MainWindow(QMainWindow, WindowMixin):
             'Ctrl+Q', 'quit', getStr('quitApp'))
         openNextPair = newAction(
             self, getStr('openNextPair'), self.openNextPair,
-            'd', 'next', getStr('openNextPairDetail'))
+            'd', 'next', getStr('openNextPairDetail'), enabled=False)
         openPrevPair = newAction(
             self, getStr('openPrevPair'), self.openPrevPair,
-            'a', 'prev', getStr('openPrevPairDetail'))
+            'a', 'prev', getStr('openPrevPairDetail'), enabled=False)
 
         # View menu
         autoSaving = QAction(getStr('autoSaveMode'), self)
         autoSaving.setCheckable(True)
-        autoSaving.setChecked(self.settings.get(SETTING_AUTO_SAVE, False))
+        autoSaving.setChecked(False)
         zoomIn = newAction(
             self, getStr('zoomIn'), partial(self.addZoom, 10),
             'Ctrl++', 'zoom-in', getStr('zoomInDetail'), enabled=False)
@@ -164,14 +162,17 @@ class MainWindow(QMainWindow, WindowMixin):
             checkable=True, enabled=False)
 
         # Edit menu
+        addPair = newAction(
+            self, getStr('addPair'), self.addPair,
+            'Ctrl+S', 'save', getStr('addPairDetail'), enabled=False)
         editKeypointMode = QAction(getStr('editKeypoint'), self)
-        editKeypointMode.triggered.connect(self.setEditKeypointMode)
+        editKeypointMode.triggered.connect(self.editKeypointMode)
         editKeypointMode.setEnabled(True)
         editKeypointMode.setCheckable(True)
         editKeypointMode.setChecked(True)
         editKeypointMode.setShortcut('v')
         editMatchMode = QAction(getStr('editMatch'), self)
-        editMatchMode.triggered.connect(self.setEditMatchMode)
+        editMatchMode.triggered.connect(self.editMatchMode)
         editMatchMode.setEnabled(True)
         editMatchMode.setCheckable(True)
         editMatchMode.setChecked(False)
@@ -204,6 +205,9 @@ class MainWindow(QMainWindow, WindowMixin):
             openFile=openFile,
             saveFile=saveFile,
             closeFile=closeFile,
+            openNextPair=openNextPair,
+            openPrevPair=openPrevPair,
+            addPair=addPair,
             editKeypointMode=editKeypointMode,
             editMatchMode=editMatchMode,
             autoSaving=autoSaving,
@@ -254,9 +258,9 @@ class MainWindow(QMainWindow, WindowMixin):
         self.zoom_level = 100
         self.fit_window = False
 
-        size = self.settings.get(SETTING_WIN_SIZE, QSize(600, 500))
+        size = QSize(600, 500)
         position = QPoint(0, 0)
-        saved_position = self.settings.get(SETTING_WIN_POSE, position)
+        saved_position = QPoint(0, 0)
         # Fix the multiple monitors issue
         for i in range(QApplication.desktop().screenCount()):
             if QApplication.desktop().availableGeometry(i).contains(saved_position):
@@ -264,9 +268,6 @@ class MainWindow(QMainWindow, WindowMixin):
                 break
         self.resize(size)
         self.move(position)
-        self.lastOpenDir = ustr(self.settings.get(SETTING_LAST_OPEN_DIR, None))
-
-        self.restoreState(self.settings.get(SETTING_WIN_STATE, QByteArray()))
 
         # Callbacks:
         self.zoomWidget.valueChanged.connect(self.paintCanvas)
@@ -280,20 +281,6 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def keyPressEvent(self, ev):
         pass
-
-    def showInfoDialog(self):
-        msg = '{0}\nversion : {1}'.format(__app_name__, __app_version__)
-        QMessageBox.information(self, 'Information', msg)
-
-    def setEditKeypointMode(self):
-        self.actions.editKeypointMode.setChecked(True)
-        self.actions.editMatchMode.setChecked(False)
-        self.canvas.setEditKeypointMode()
-
-    def setEditMatchMode(self):
-        self.actions.editKeypointMode.setChecked(False)
-        self.actions.editMatchMode.setChecked(True)
-        self.canvas.setEditMatchMode()
 
     def pairitemDoubleClicked(self, item=None):
         idx = self.pairListWidget.currentIndex().row()
@@ -315,12 +302,16 @@ class MainWindow(QMainWindow, WindowMixin):
     def changePair(self, view_id_i, view_id_j):
         if len(self.matching.get_matches()) < self.pairListWidget.count():
             self.pairListWidget.takeItem(self.pairListWidget.count()-1)
-        match_idx = self.matching.find_match_idx(view_id_i, view_id_j)
+        match_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
         if match_idx is not None:
             self.pairListWidget.setCurrentRow(match_idx)
+            self.actions.openNextPair.setEnabled(True)
+            self.actions.openPrevPair.setEnabled(True)
         else:
             self.pairListWidget.addItem('None ({}, {})'.format(view_id_i, view_id_j))
             self.pairListWidget.setCurrentRow(self.pairListWidget.count()-1)
+            self.actions.openNextPair.setEnabled(False)
+            self.actions.openPrevPair.setEnabled(False)
         self.matching.set_view(view_id_i, view_id_j)
         self.fileListWidgetI.setCurrentRow(self.matching.get_view_idx_i())
         self.fileListWidgetJ.setCurrentRow(self.matching.get_view_idx_j())
@@ -449,28 +440,27 @@ class MainWindow(QMainWindow, WindowMixin):
         #     event.ignore()
         self.settings.save()
 
-    def openImageDir(self, _value=False):
+    def openDir(self, _value=False):
         if self.imageDir and os.path.exists(self.imageDir):
             defaultDir = self.imageDir
         else:
             defaultDir = '.'
-        self.imageDir = ustr(
-            QFileDialog.getExistingDirectory(
-                self, '{} - Open Directory'.format(__app_name__), defaultDir,
-                QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks))
+        self.imageDir = QFileDialog.getExistingDirectory(
+            self, '{} - Open Directory'.format(__app_name__), defaultDir,
+            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
 
     def newFile(self, _value=False):
-        if not self.imageDir:
-            QMessageBox.warning(self, 'Attention', 'First of all, you need to select image directory', QMessageBox.Ok)
-            return
         if not self.mayContinue():
             return
-        self.savePath = self.newFileDialog.popUp()
-        x = {'matches': [], 'views': []}
+        ret = self.newFileDialog.popUp()
+        if ret is None:
+            return
+        self.imageDir, self.savePath = ret
+        x = {'views': [], 'pairs': []}
         image_paths = self._scan_all_images(self.imageDir)
         for i in range(len(image_paths)):
             for j in range(i + 1, len(image_paths)):
-                x['matches'].append({'id_view_i': i, 'id_view_j': j, 'match': []})
+                x['pairs'].append({'id_view_i': i, 'id_view_j': j, 'matches': []})
         for i, image_path in enumerate(image_paths):
             x['views'].append({
                 'id_view': i,
@@ -482,7 +472,7 @@ class MainWindow(QMainWindow, WindowMixin):
     def openFile(self, _value=False):
         if not self.mayContinue():
             return
-        path = osp.dirname(ustr(self.savePath)) if self.savePath else '.'
+        path = osp.dirname(self.savePath) if self.savePath else '.'
         filters = 'matching file (*.json)'
         filename = QFileDialog.getOpenFileName(
             self, 'choose matching file', path, filters)
@@ -508,10 +498,34 @@ class MainWindow(QMainWindow, WindowMixin):
     def openNextPair(self, _value=False):
         if self.actions.autoSaving.isChecked():
             self.matching.save(self.savePath)
+        view_id_i, view_id_j = self.matching.get_next_view_pair()
+        self.changePair(view_id_i, view_id_j)
 
     def openPrevPair(self, _value=False):
         if self.actions.autoSaving.isChecked():
             self.matching.save(self.savePath)
+        view_id_i, view_id_j = self.matching.get_prev_view_pair()
+        self.changePair(view_id_i, view_id_j)
+
+    def addPair(self):
+        view_id_i = self.matching.get_views()[self.fileListWidgetI.currentIndex().row()]['id_view']
+        view_id_j = self.matching.get_views()[self.fileListWidgetJ.currentIndex().row()]['id_view']
+        self.matching.append_pair(view_id_i, view_id_j)
+        self.changePair(view_id_i, view_id_j)
+
+    def editKeypointMode(self):
+        self.actions.editKeypointMode.setChecked(True)
+        self.actions.editMatchMode.setChecked(False)
+        self.canvas.setEditKeypointMode()
+
+    def editMatchMode(self):
+        self.actions.editKeypointMode.setChecked(False)
+        self.actions.editMatchMode.setChecked(True)
+        self.canvas.setEditMatchMode()
+
+    def showInfoDialog(self):
+        msg = '{0}\nversion : {1}'.format(__app_name__, __app_version__)
+        QMessageBox.information(self, 'Information', msg)
 
     def getDirtyEvent(self):
         self.actions.saveFile.setEnabled(True)
@@ -542,7 +556,7 @@ class MainWindow(QMainWindow, WindowMixin):
             for file in files:
                 if file.lower().endswith(tuple(extensions)):
                     relativePath = os.path.join(root, file)
-                    path = ustr(os.path.abspath(relativePath))
+                    path = os.path.abspath(relativePath)
                     image_paths.append(path)
         natural_sort(image_paths, key=lambda x: x.lower())
         return image_paths

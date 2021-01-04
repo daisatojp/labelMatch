@@ -1,6 +1,5 @@
 import os
 import os.path as osp
-from libs.ustr import ustr
 import hashlib
 import re
 import sys

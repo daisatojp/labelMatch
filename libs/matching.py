@@ -45,7 +45,7 @@ class Matching:
         self._view_id_j = None
         self._view_idx_i = None
         self._view_idx_j = None
-        self._match_idx = None
+        self._pair_idx = None
 
         self._dirty = False
         self._dirty_callback = None
@@ -82,8 +82,8 @@ class Matching:
                 painter.fillPath(point_path, self.keypoint_highlighted_fill_color)
             else:
                 painter.fillPath(point_path, self.keypoint_default_fill_color)
-        if self._match_idx is not None:
-            for idx, match in enumerate(self.data['matches'][self._match_idx]['match']):
+        if self._pair_idx is not None:
+            for idx, match in enumerate(self.data['pairs'][self._pair_idx]['matches']):
                 keypoint_i = self.data['views'][self._view_idx_i]['keypoints'][match[0]]
                 keypoint_j = self.data['views'][self._view_idx_j]['keypoints'][match[1]]
                 match_path = QPainterPath()
@@ -95,7 +95,7 @@ class Matching:
                 painter.drawPath(match_path)
 
     def get_matches(self):
-        return self.data['matches']
+        return self.data['pairs']
 
     def get_views(self):
         return self.data['views']
@@ -112,12 +112,28 @@ class Matching:
     def get_img_j(self):
         return cv2.imread(osp.join(self.image_dir, osp.join(*self.data['views'][self._view_idx_j]['filename'])))
 
+    def get_next_view_pair(self):
+        if self._pair_idx is None:
+            raise RuntimeError('view pair is not set.')
+        match_idx = min(len(self.data['pairs']) - 1, self._pair_idx + 1)
+        view_id_i = self.data['pairs'][match_idx]['id_view_i']
+        view_id_j = self.data['pairs'][match_idx]['id_view_j']
+        return view_id_i, view_id_j
+
+    def get_prev_view_pair(self):
+        if self._pair_idx is None:
+            raise RuntimeError('view pair is not set.')
+        match_idx = max(0, self._pair_idx - 1)
+        view_id_i = self.data['pairs'][match_idx]['id_view_i']
+        view_id_j = self.data['pairs'][match_idx]['id_view_j']
+        return view_id_i, view_id_j
+
     def set_view(self, view_id_i, view_id_j):
         self._view_id_i = view_id_i
         self._view_id_j = view_id_j
         self._view_idx_i = self.find_view_idx(view_id_i)
         self._view_idx_j = self.find_view_idx(view_id_j)
-        self._match_idx = self.find_match_idx(view_id_i, view_id_j)
+        self._pair_idx = self.find_pair_idx(view_id_i, view_id_j)
 
     def append_keypoint_in_view_i(self, x, y):
         self.data['views'][self._view_idx_i]['keypoints'].append([x, y])
@@ -127,13 +143,21 @@ class Matching:
         self.data['views'][self._view_idx_j]['keypoints'].append([x, y])
         self.set_dirty()
 
+    def append_pair(self, view_id_i, view_id_j):
+        if self.find_pair_idx(view_id_i, view_id_j) is None:
+            self.data['pairs'].append({
+                'id_view_i': view_id_i,
+                'id_view_j': view_id_j,
+                'matches': []})
+            self.set_dirty()
+
     def append_match(self, keypoint_idx_i, keypoint_idx_j):
-        if self._match_idx is not None:
+        if self._pair_idx is not None:
             arr = [match[0] == keypoint_idx_i or match[1] == keypoint_idx_j
-                   for match in self.data['matches'][self._match_idx]['match']]
+                   for match in self.data['pairs'][self._pair_idx]['matches']]
             if any(arr):
                 raise RuntimeWarning('this keypoints are assined as a match')
-            self.data['matches'][self._match_idx]['match'].append([keypoint_idx_i, keypoint_idx_j])
+            self.data['pairs'][self._pair_idx]['matches'].append([keypoint_idx_i, keypoint_idx_j])
         else:
             raise RuntimeWarning('This view pair is not registered.')
         self.set_dirty()
@@ -154,19 +178,19 @@ class Matching:
         view_idx = Matching.find_view_idx(self.data, view_id)
         keypoints = self.data['views'][view_idx]['keypoints']
         self.data['views'][view_idx]['keypoints'] = keypoints[:idx] + keypoints[idx+1:]
-        for i in range(len(self.data['matches'])):
-            if self.data['matches'][i]['id_view_i'] == view_id:
-                for j in range(len(self.data['matches'][i]['match'])):
-                    if self.data['matches'][i]['match'][j][0] == idx:
-                        self.data['matches'][i]['match'].pop(j)
-                    if self.data['matches'][i]['match'][j][0] > idx:
-                        self.data['matches'][i]['match'][j][0] -= 1
-            if self.data['matches'][i]['view_j'] == view_id:
-                for j in range(len(self.data['matches'][i]['match'])):
-                    if self.data['matches'][i]['match'][j][1] == idx:
-                        self.data['matches'][i]['match'].pop(j)
-                    if self.data['matches'][i]['match'][j][1] > idx:
-                        self.data['matches'][i]['match'][j][1] -= 1
+        for i in range(len(self.data['pairs'])):
+            if self.data['pairs'][i]['id_view_i'] == view_id:
+                for j in range(len(self.data['pairs'][i]['matches'])):
+                    if self.data['pairs'][i]['matches'][j][0] == idx:
+                        self.data['pairs'][i]['matches'].pop(j)
+                    if self.data['pairs'][i]['matches'][j][0] > idx:
+                        self.data['pairs'][i]['matches'][j][0] -= 1
+            if self.data['pairs'][i]['id_view_j'] == view_id:
+                for j in range(len(self.data['pairs'][i]['matches'])):
+                    if self.data['pairs'][i]['matches'][j][1] == idx:
+                        self.data['pairs'][i]['matches'].pop(j)
+                    if self.data['pairs'][i]['matches'][j][1] > idx:
+                        self.data['pairs'][i]['matches'][j][1] -= 1
 
     def empty_i(self):
         return Matching.empty(self.data['views'][self._view_idx_i]['keypoints'])
@@ -187,8 +211,8 @@ class Matching:
         else:
             return None
 
-    def find_match_idx(self, view_id_i, view_id_j):
-        arr = [m['id_view_i'] == view_id_i and m['id_view_j'] == view_id_j for m in self.data['matches']]
+    def find_pair_idx(self, view_id_i, view_id_j):
+        arr = [m['id_view_i'] == view_id_i and m['id_view_j'] == view_id_j for m in self.data['pairs']]
         if any(arr):
             return arr.index(True)
         else:
