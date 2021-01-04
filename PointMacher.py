@@ -164,7 +164,7 @@ class MainWindow(QMainWindow, WindowMixin):
         # Edit menu
         addPair = newAction(
             self, getStr('addPair'), self.addPair,
-            'Ctrl+S', 'save', getStr('addPairDetail'), enabled=False)
+            'Ctrl+X', 'save', getStr('addPairDetail'), enabled=False)
         editKeypointMode = QAction(getStr('editKeypoint'), self)
         editKeypointMode.triggered.connect(self.editKeypointMode)
         editKeypointMode.setEnabled(True)
@@ -230,7 +230,7 @@ class MainWindow(QMainWindow, WindowMixin):
             (openDir, newFile, openFile, saveFile, closeFile, quitApp))
         addActions(
             self.menus.edit,
-            (editKeypointMode, editMatchMode))
+            (addPair, None, editKeypointMode, editMatchMode))
         addActions(
             self.menus.view,
             (autoSaving, None,
@@ -245,16 +245,13 @@ class MainWindow(QMainWindow, WindowMixin):
         addActions(
             self.tools,
             (openDir, openFile, saveFile,
-             openNextPair, openPrevPair,
+             None, addPair, openNextPair, openPrevPair,
              zoomIn, zoom, zoomOut, fitWindow, fitWidth))
 
         self.statusBar().showMessage('{} started.'.format(__app_name__))
         self.statusBar().show()
 
-        # Application state.
         self.image = QImage()
-        self.recentFiles = []
-        self.maxRecent = 7
         self.zoom_level = 100
         self.fit_window = False
 
@@ -305,11 +302,13 @@ class MainWindow(QMainWindow, WindowMixin):
         match_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
         if match_idx is not None:
             self.pairListWidget.setCurrentRow(match_idx)
+            self.actions.addPair.setEnabled(False)
             self.actions.openNextPair.setEnabled(True)
             self.actions.openPrevPair.setEnabled(True)
         else:
             self.pairListWidget.addItem('None ({}, {})'.format(view_id_i, view_id_j))
             self.pairListWidget.setCurrentRow(self.pairListWidget.count()-1)
+            self.actions.addPair.setEnabled(True)
             self.actions.openNextPair.setEnabled(False)
             self.actions.openPrevPair.setEnabled(False)
         self.matching.set_view(view_id_i, view_id_j)
@@ -409,7 +408,6 @@ class MainWindow(QMainWindow, WindowMixin):
         super(MainWindow, self).resizeEvent(event)
 
     def paintCanvas(self):
-        # assert not self.image.isNull(), "cannot paint null image"
         self.canvas.scale = 0.01 * self.zoomWidget.value()
         self.canvas.adjustSize()
         self.canvas.update()
@@ -511,6 +509,7 @@ class MainWindow(QMainWindow, WindowMixin):
         view_id_i = self.matching.get_views()[self.fileListWidgetI.currentIndex().row()]['id_view']
         view_id_j = self.matching.get_views()[self.fileListWidgetJ.currentIndex().row()]['id_view']
         self.matching.append_pair(view_id_i, view_id_j)
+        self.pairListWidget.item(self.pairListWidget.count() - 1).setText('({}, {})'.format(view_id_i, view_id_j))
         self.changePair(view_id_i, view_id_j)
 
     def editKeypointMode(self):
