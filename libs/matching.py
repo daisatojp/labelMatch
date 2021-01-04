@@ -47,6 +47,8 @@ class Matching:
         self._view_idx_j = None
         self._pair_idx = None
 
+        self._update_callback = None
+
         self._dirty = False
         self._dirty_callback = None
 
@@ -94,17 +96,40 @@ class Matching:
                 painter.setPen(pen)
                 painter.drawPath(match_path)
 
-    def get_matches(self):
-        return self.data['pairs']
-
     def get_views(self):
         return self.data['views']
+
+    def get_pairs(self):
+        return self.data['pairs']
+
+    def get_view_id_i(self):
+        return self._view_id_i
+
+    def get_view_id_j(self):
+        return self._view_id_j
 
     def get_view_idx_i(self):
         return self._view_idx_i
 
     def get_view_idx_j(self):
         return self._view_idx_j
+
+    def get_pair_idx(self):
+        return self._pair_idx
+
+    def get_keypoints_count(self, view_id):
+        view_idx = self.find_view_idx(view_id)
+        if view_idx is None:
+            return len(self.data['views'][view_idx]['keypoints'])
+        else:
+            return None
+
+    def get_matches_count(self, view_id_i, view_id_j):
+        pair_idx = self.find_pair_idx(view_id_i, view_id_j)
+        if pair_idx is not None:
+            return len(self.data['pairs'][pair_idx]['matches'])
+        else:
+            return None
 
     def get_img_i(self):
         return cv2.imread(osp.join(self.image_dir, osp.join(*self.data['views'][self._view_idx_i]['filename'])))
@@ -137,10 +162,12 @@ class Matching:
 
     def append_keypoint_in_view_i(self, x, y):
         self.data['views'][self._view_idx_i]['keypoints'].append([x, y])
+        self.set_update()
         self.set_dirty()
 
     def append_keypoint_in_view_j(self, x, y):
         self.data['views'][self._view_idx_j]['keypoints'].append([x, y])
+        self.set_update()
         self.set_dirty()
 
     def append_pair(self, view_id_i, view_id_j):
@@ -149,6 +176,7 @@ class Matching:
                 'id_view_i': view_id_i,
                 'id_view_j': view_id_j,
                 'matches': []})
+            self.set_update()
             self.set_dirty()
 
     def append_match(self, keypoint_idx_i, keypoint_idx_j):
@@ -160,19 +188,26 @@ class Matching:
             self.data['pairs'][self._pair_idx]['matches'].append([keypoint_idx_i, keypoint_idx_j])
         else:
             raise RuntimeWarning('This view pair is not registered.')
+        self.set_update()
         self.set_dirty()
 
     def set_keypoint_pos_in_view_i(self, idx, x, y):
         self.data['views'][self._view_idx_i]['keypoints'][idx] = [x, y]
+        self.set_update()
+        self.set_dirty()
 
     def set_keypoint_pos_in_view_j(self, idx, x, y):
         self.data['views'][self._view_idx_j]['keypoints'][idx] = [x, y]
+        self.set_update()
+        self.set_dirty()
 
     def remove_keypoint_in_view_i(self, idx):
         self.remove_keypoint(self._view_id_i, idx)
+        # update and dirty is called in remove_keypoint
 
     def remove_keypoint_in_view_j(self, idx):
         self.remove_keypoint(self._view_id_j, idx)
+        # update and dirty is called in remove_keypoint
 
     def remove_keypoint(self, view_id, idx):
         view_idx = Matching.find_view_idx(view_id)
@@ -191,12 +226,14 @@ class Matching:
                         self.data['pairs'][i]['matches'].pop(j)
                     if self.data['pairs'][i]['matches'][j][1] > idx:
                         self.data['pairs'][i]['matches'][j][1] -= 1
+        self.set_update()
+        self.set_dirty()
 
     def empty_i(self):
-        return Matching.empty(self.data['views'][self._view_idx_i]['keypoints'])
+        return len(self.data['views'][self._view_idx_i]['keypoints']) == 0
 
     def empty_j(self):
-        return Matching.empty(self.data['views'][self._view_idx_j]['keypoints'])
+        return len(self.data['views'][self._view_idx_j]['keypoints']) == 0
 
     def min_distance_in_view_i(self, x, y):
         return Matching.min_distance(x, y, self.data['views'][self._view_idx_i]['keypoints'])
@@ -229,6 +266,13 @@ class Matching:
             json.dump(self.data, f)
         self._dirty = False
 
+    def set_update(self):
+        if self._update_callback:
+            self._update_callback()
+
+    def set_update_callback(self, f):
+        self._update_callback = f
+
     def dirty(self):
         return self._dirty
 
@@ -242,15 +286,8 @@ class Matching:
         self._dirty_callback = f
 
     @staticmethod
-    def empty(keypoints):
-        if 0 < len(keypoints):
-            return False
-        else:
-            return True
-
-    @staticmethod
     def min_distance(x, y, keypoints):
-        if Matching.empty(keypoints):
+        if len(keypoints) == 0:
             return None
         distances = [((keypoint[0] - x)**2 + (keypoint[1] - y)**2)**(1/2) for keypoint in keypoints]
         val = min(distances)

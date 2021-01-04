@@ -61,6 +61,28 @@ class MainWindow(QMainWindow, WindowMixin):
         self.imageDir = None
         self.savePath = None
 
+        self.viewListWidgetI = QListWidget()
+        self.viewListWidgetI.itemDoubleClicked.connect(self.viewitemDoubleClickedI)
+        viewlistLayoutI = QVBoxLayout()
+        viewlistLayoutI.setContentsMargins(0, 0, 0, 0)
+        viewlistLayoutI.addWidget(self.viewListWidgetI)
+        viewListContainerI = QWidget()
+        viewListContainerI.setLayout(viewlistLayoutI)
+        self.viewdockI = QDockWidget(getStr('viewListI'), self)
+        self.viewdockI.setObjectName(getStr('views'))
+        self.viewdockI.setWidget(viewListContainerI)
+
+        self.viewListWidgetJ = QListWidget()
+        self.viewListWidgetJ.itemDoubleClicked.connect(self.viewitemDoubleClickedJ)
+        viewlistLayoutJ = QVBoxLayout()
+        viewlistLayoutJ.setContentsMargins(0, 0, 0, 0)
+        viewlistLayoutJ.addWidget(self.viewListWidgetJ)
+        viewListContainerJ = QWidget()
+        viewListContainerJ.setLayout(viewlistLayoutJ)
+        self.viewdockJ = QDockWidget(getStr('viewListJ'), self)
+        self.viewdockJ.setObjectName(getStr('views'))
+        self.viewdockJ.setWidget(viewListContainerJ)
+
         self.pairListWidget = QListWidget()
         self.pairListWidget.itemDoubleClicked.connect(self.pairitemDoubleClicked)
         pairlistLayout = QVBoxLayout()
@@ -71,28 +93,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.pairdock = QDockWidget(getStr('pairList'), self)
         self.pairdock.setObjectName(getStr('pairs'))
         self.pairdock.setWidget(pairListContainer)
-
-        self.fileListWidgetI = QListWidget()
-        self.fileListWidgetI.itemDoubleClicked.connect(self.fileitemDoubleClickedI)
-        filelistLayoutI = QVBoxLayout()
-        filelistLayoutI.setContentsMargins(0, 0, 0, 0)
-        filelistLayoutI.addWidget(self.fileListWidgetI)
-        fileListContainerI = QWidget()
-        fileListContainerI.setLayout(filelistLayoutI)
-        self.filedockI = QDockWidget(getStr('fileListI'), self)
-        self.filedockI.setObjectName(getStr('files'))
-        self.filedockI.setWidget(fileListContainerI)
-
-        self.fileListWidgetJ = QListWidget()
-        self.fileListWidgetJ.itemDoubleClicked.connect(self.fileitemDoubleClickedJ)
-        filelistLayoutJ = QVBoxLayout()
-        filelistLayoutJ.setContentsMargins(0, 0, 0, 0)
-        filelistLayoutJ.addWidget(self.fileListWidgetJ)
-        fileListContainerJ = QWidget()
-        fileListContainerJ.setLayout(filelistLayoutJ)
-        self.filedockJ = QDockWidget(getStr('fileListJ'), self)
-        self.filedockJ.setObjectName(getStr('files'))
-        self.filedockJ.setWidget(fileListContainerJ)
 
         self.canvas = Canvas(parent=self)
         self.canvas.zoomRequest.connect(self.zoomRequest)
@@ -108,10 +108,10 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.setCentralWidget(scroll)
         self.addDockWidget(Qt.RightDockWidgetArea, self.pairdock)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.filedockI)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.filedockJ)
-        self.filedockI.setFeatures(QDockWidget.DockWidgetFloatable)
-        self.filedockJ.setFeatures(QDockWidget.DockWidgetFloatable)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.viewdockI)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.viewdockJ)
+        self.viewdockI.setFeatures(QDockWidget.DockWidgetFloatable)
+        self.viewdockJ.setFeatures(QDockWidget.DockWidgetFloatable)
 
         # File menu
         openDir = newAction(
@@ -282,26 +282,26 @@ class MainWindow(QMainWindow, WindowMixin):
     def pairitemDoubleClicked(self, item=None):
         idx = self.pairListWidget.currentIndex().row()
         if idx < len(self.matching.get_matches()):
-            id_view_i = self.matching.get_matches()[idx]['id_view_i']
-            id_view_j = self.matching.get_matches()[idx]['id_view_j']
-            self.changePair(id_view_i, id_view_j)
+            view_id_i = self.matching.get_matches()[idx]['id_view_i']
+            view_id_j = self.matching.get_matches()[idx]['id_view_j']
+            self.changePair(view_id_i, view_id_j)
 
-    def fileitemDoubleClickedI(self, item=None):
-        id_view_i = self.matching.get_views()[self.fileListWidgetI.currentIndex().row()]['id_view']
-        id_view_j = self.matching.get_views()[self.fileListWidgetJ.currentIndex().row()]['id_view']
-        self.changePair(id_view_i, id_view_j)
+    def viewitemDoubleClickedI(self, item=None):
+        view_id_i = self.matching.get_views()[self.viewListWidgetI.currentIndex().row()]['id_view']
+        view_id_j = self.matching.get_views()[self.viewListWidgetJ.currentIndex().row()]['id_view']
+        self.changePair(view_id_i, view_id_j)
 
-    def fileitemDoubleClickedJ(self, item=None):
-        id_view_i = self.matching.get_views()[self.fileListWidgetI.currentIndex().row()]['id_view']
-        id_view_j = self.matching.get_views()[self.fileListWidgetJ.currentIndex().row()]['id_view']
+    def viewitemDoubleClickedJ(self, item=None):
+        id_view_i = self.matching.get_views()[self.viewListWidgetI.currentIndex().row()]['id_view']
+        id_view_j = self.matching.get_views()[self.viewListWidgetJ.currentIndex().row()]['id_view']
         self.changePair(id_view_i, id_view_j)
 
     def changePair(self, view_id_i, view_id_j):
-        if len(self.matching.get_matches()) < self.pairListWidget.count():
+        if len(self.matching.get_pairs()) < self.pairListWidget.count():
             self.pairListWidget.takeItem(self.pairListWidget.count()-1)
-        match_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
-        if match_idx is not None:
-            self.pairListWidget.setCurrentRow(match_idx)
+        pair_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
+        if pair_idx is not None:
+            self.pairListWidget.setCurrentRow(pair_idx)
             self.actions.addPair.setEnabled(False)
             self.actions.openNextPair.setEnabled(True)
             self.actions.openPrevPair.setEnabled(True)
@@ -312,8 +312,8 @@ class MainWindow(QMainWindow, WindowMixin):
             self.actions.openNextPair.setEnabled(False)
             self.actions.openPrevPair.setEnabled(False)
         self.matching.set_view(view_id_i, view_id_j)
-        self.fileListWidgetI.setCurrentRow(self.matching.get_view_idx_i())
-        self.fileListWidgetJ.setCurrentRow(self.matching.get_view_idx_j())
+        self.viewListWidgetI.setCurrentRow(self.matching.get_view_idx_i())
+        self.viewListWidgetJ.setCurrentRow(self.matching.get_view_idx_j())
         self.canvas.updatePixmap()
         self.canvas.repaint()
 
@@ -387,24 +387,23 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def loadMatching(self, data):
         self.matching = Matching(data, self.imageDir)
-        self.matching.set_dirty_callback(self.getDirtyEvent)
+        self.matching.set_update_callback(self.getMatchingUpdateEvent)
+        self.matching.set_dirty_callback(self.getMatchingDirtyEvent)
         self.canvas.setMatching(self.matching)
+        self.viewListWidgetI.clear()
+        self.viewListWidgetJ.clear()
         self.pairListWidget.clear()
-        self.fileListWidgetI.clear()
-        self.fileListWidgetJ.clear()
-        for match in self.matching.get_matches():
-            self.pairListWidget.addItem('({}, {})'.format(match['id_view_i'], match['id_view_j']))
         for view in self.matching.get_views():
-            self.fileListWidgetI.addItem('{} | {}'.format(view['id_view'], view['filename']))
-            self.fileListWidgetJ.addItem('{} | {}'.format(view['id_view'], view['filename']))
-        id_view_i = self.matching.get_matches()[0]['id_view_i']
-        id_view_j = self.matching.get_matches()[0]['id_view_j']
-        self.changePair(id_view_i, id_view_j)
+            self.viewListWidgetI.addItem(self.getViewItemText(view['id_view']))
+            self.viewListWidgetJ.addItem(self.getViewItemText(view['id_view']))
+        for pair in self.matching.get_pairs():
+            self.pairListWidget.addItem(self.getPairItemText(
+                pair['id_view_i'], pair['id_view_j']))
+        view_id_i = self.matching.get_pairs()[0]['id_view_i']
+        view_id_j = self.matching.get_pairs()[0]['id_view_j']
+        self.changePair(view_id_i, view_id_j)
 
     def resizeEvent(self, event):
-        if self.canvas and not self.image.isNull()\
-           and self.zoomMode != self.MANUAL_ZOOM:
-            self.adjustScale()
         super(MainWindow, self).resizeEvent(event)
 
     def paintCanvas(self):
@@ -509,7 +508,8 @@ class MainWindow(QMainWindow, WindowMixin):
         view_id_i = self.matching.get_views()[self.fileListWidgetI.currentIndex().row()]['id_view']
         view_id_j = self.matching.get_views()[self.fileListWidgetJ.currentIndex().row()]['id_view']
         self.matching.append_pair(view_id_i, view_id_j)
-        self.pairListWidget.item(self.pairListWidget.count() - 1).setText('({}, {})'.format(view_id_i, view_id_j))
+        self.pairListWidget.item(self.pairListWidget.count() - 1).setText(
+            self.getPairItemText(view_id_i, view_id_j))
         self.changePair(view_id_i, view_id_j)
 
     def editKeypointMode(self):
@@ -526,8 +526,36 @@ class MainWindow(QMainWindow, WindowMixin):
         msg = '{0}\nversion : {1}'.format(__app_name__, __app_version__)
         QMessageBox.information(self, 'Information', msg)
 
-    def getDirtyEvent(self):
+    def getMatchingUpdateEvent(self):
+        view_id_i = self.matching.get_view_id_i()
+        view_id_j = self.matching.get_view_id_j()
+        self.viewListWidgetI.item(self.matching.get_view_idx_i()).setText(
+            self.getViewItemText(view_id_i))
+        self.viewListWidgetJ.item(self.matching.get_view_idx_j()).setText(
+            self.getViewItemText(view_id_j))
+        self.pairListWidget.item(self.matching.get_pair_idx()).setText(
+            self.getPairItemText(view_id_i, view_id_j))
+
+    def getMatchingDirtyEvent(self):
         self.actions.saveFile.setEnabled(True)
+
+    def getViewItemText(self, view_id):
+        idx = self.matching.find_view_idx(view_id)
+        if idx is not None:
+            v = self.matching.get_views()[idx]
+            return '{} | {} [keypoints={}]'.format(
+                view_id,
+                v['filename'],
+                len(v['keypoints']))
+        raise RuntimeError('invalid view_id')
+
+    def getPairItemText(self, view_id_i, view_id_j):
+        idx = self.matching.find_pair_idx(view_id_i, view_id_j)
+        if idx is not None:
+            p = self.matching.get_pairs()[idx]
+            return '({}, {}) [matches={}]'.format(
+                view_id_i, view_id_j, len(p['matches']))
+        raise RuntimeError('invalid view_id_i and view_id_j')
 
     def mayContinue(self):
         if self.matching is not None:
