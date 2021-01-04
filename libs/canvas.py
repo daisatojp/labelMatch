@@ -144,8 +144,8 @@ class Canvas(QWidget):
                     if (self.matching.highlighted_idx_j is not None) and (self.matching.selected_idx_i is not None):
                         try:
                             self.matching.append_match(
-                                self.matching.highlighted_idx_j,
-                                self.matching.selected_idx_i)
+                                self.matching.selected_idx_i,
+                                self.matching.highlighted_idx_j)
                             self.matching.clear_keypoint_decoration()
                         except RuntimeWarning as e:
                             QMessageBox.warning(self, 'Attention', '{}'.format(e), QMessageBox.Ok)

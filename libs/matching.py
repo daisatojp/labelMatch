@@ -19,7 +19,7 @@ class Matching:
         QColor(255, 0, 255, 255),
         QColor(0, 255, 255, 255),
         QColor(255, 255, 255, 255)]
-    match_line_width = 3
+    match_line_width = 2
 
     def __init__(self, data=None, image_dir=None):
 
@@ -175,7 +175,7 @@ class Matching:
         self.remove_keypoint(self._view_id_j, idx)
 
     def remove_keypoint(self, view_id, idx):
-        view_idx = Matching.find_view_idx(self.data, view_id)
+        view_idx = Matching.find_view_idx(view_id)
         keypoints = self.data['views'][view_idx]['keypoints']
         self.data['views'][view_idx]['keypoints'] = keypoints[:idx] + keypoints[idx+1:]
         for i in range(len(self.data['pairs'])):
