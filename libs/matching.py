@@ -12,14 +12,19 @@ class Matching:
     keypoint_selected_fill_color = QColor(0, 128, 255, 155)
     keypoint_size = 8
     match_line_colors = [
-        QColor(255, 0, 0, 255),
-        QColor(0, 255, 0, 255),
-        QColor(0, 0, 255, 255),
-        QColor(255, 255, 0, 255),
-        QColor(255, 0, 255, 255),
-        QColor(0, 255, 255, 255),
-        QColor(255, 255, 255, 255)]
+        (255, 0, 0, 128),
+        (0, 255, 0, 128),
+        (0, 0, 255, 128),
+        (255, 255, 0, 128),
+        (255, 0, 255, 128),
+        (0, 255, 255, 128),
+        (255, 255, 255, 128)]
     match_line_width = 2
+    match_highlighted_line_width = 3
+    match_selected_line_width = 3
+    match_line_alpha = 128
+    match_highlighted_line_alpha = 255
+    match_selected_line_alpha = 255
 
     def __init__(self, data=None, image_dir=None):
 
@@ -36,7 +41,6 @@ class Matching:
         self.highlighted_idx_j = None
         self.selected_idx_i = None
         self.selected_idx_j = None
-        self.highlighted_match_idx = None
         self.draw_offset_i_x = 0
         self.draw_offset_i_y = 0
         self.draw_offset_j_x = 0
@@ -86,14 +90,26 @@ class Matching:
             else:
                 painter.fillPath(point_path, self.keypoint_default_fill_color)
         if self._pair_idx is not None:
+            highlighted_idx_in_view_i = self.find_match_idx_in_view_i(self.highlighted_idx_i)
+            highlighted_idx_in_view_j = self.find_match_idx_in_view_j(self.highlighted_idx_j)
+            selected_idx_in_view_i = self.find_match_idx_in_view_i(self.selected_idx_i)
+            selected_idx_in_view_j = self.find_match_idx_in_view_j(self.selected_idx_j)
             for idx, match in enumerate(self.data['pairs'][self._pair_idx]['matches']):
                 keypoint_i = self.data['views'][self._view_idx_i]['keypoints'][match[0]]
                 keypoint_j = self.data['views'][self._view_idx_j]['keypoints'][match[1]]
                 match_path = QPainterPath()
                 match_path.moveTo(keypoint_i[0] + self.draw_offset_i_x, keypoint_i[1] + self.draw_offset_i_y)
                 match_path.lineTo(keypoint_j[0] + self.draw_offset_j_x, keypoint_j[1] + self.draw_offset_j_y)
-                pen = QPen(self.match_line_colors[idx % len(self.match_line_colors)])
-                pen.setWidth(self.match_line_width / scale)
+                color = self.match_line_colors[idx % len(self.match_line_colors)]
+                if idx in (highlighted_idx_in_view_i, highlighted_idx_in_view_j):
+                    pen = QPen(QColor(color[0], color[1], color[2], self.match_highlighted_line_alpha))
+                    pen.setWidth(self.match_highlighted_line_width / scale)
+                elif idx in (selected_idx_in_view_i, selected_idx_in_view_j):
+                    pen = QPen(QColor(color[0], color[1], color[2], self.match_selected_line_alpha))
+                    pen.setWidth(self.match_selected_line_width / scale)
+                else:
+                    pen = QPen(QColor(color[0], color[1], color[2], self.match_line_alpha))
+                    pen.setWidth(self.match_line_width / scale)
                 painter.setPen(pen)
                 painter.drawPath(match_path)
 
@@ -304,10 +320,9 @@ class Matching:
 
     def clear_decoration(self):
         self.highlighted_idx_i = None
-        self.selected_idx_i = None
         self.highlighted_idx_j = None
+        self.selected_idx_i = None
         self.selected_idx_j = None
-        self.highlighted_match_idx = None
 
     def save(self, file_path):
         with open(file_path, 'w') as f:

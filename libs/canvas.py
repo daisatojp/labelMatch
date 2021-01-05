@@ -145,9 +145,6 @@ class Canvas(QWidget):
                     elif nearby and (self.matching.selected_idx_j is None) and (self.matching.selected_idx_i != idx):
                         self.matching.selected_idx_i = idx
                         self.matching.highlighted_idx_i = None
-                        match_idx = self.matching.find_match_idx_in_view_i(idx)
-                        if match_idx is not None:
-                            self.matching.highlighted_match_idx = match_idx
                     elif nearby and (self.matching.selected_idx_j is None) and (self.matching.selected_idx_i == idx):
                         self.matching.clear_decoration()
                 if posInViewJ:
@@ -164,9 +161,6 @@ class Canvas(QWidget):
                     elif nearby and (self.matching.selected_idx_i is None) and (self.matching.selected_idx_j != idx):
                         self.matching.selected_idx_j = idx
                         self.matching.highlighted_idx_j = None
-                        match_idx = self.matching.find_match_idx_in_view_j(idx)
-                        if match_idx is not None:
-                            self.matching.highlighted_match_idx = match_idx
                     elif nearby and (self.matching.selected_idx_i is None) and (self.matching.selected_idx_j == idx):
                         self.matching.clear_decoration()
 
