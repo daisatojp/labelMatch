@@ -15,10 +15,6 @@ CURSOR_GRAB = Qt.OpenHandCursor
 class Canvas(QWidget):
     zoomRequest = pyqtSignal(int)
     scrollRequest = pyqtSignal(int, int)
-    newShape = pyqtSignal()
-    selectionChanged = pyqtSignal(bool)
-    shapeMoved = pyqtSignal()
-    drawingPolygon = pyqtSignal(bool)
 
     MODE_EDIT_KEYPOINT = 1
     MODE_EDIT_MATCH = 2
@@ -35,25 +31,21 @@ class Canvas(QWidget):
         self.img_j_h = None
         self.scale = 1.0
         self.pixmap = QPixmap()
-        self.visible = {}
         self._painter = QPainter()
         self._cursor = CURSOR_DEFAULT
-        self.menus = (QMenu(), QMenu())
+
         # set widget options
         self.setMouseTracking(True)
         self.setFocusPolicy(Qt.WheelFocus)
 
     def enterEvent(self, ev):
-        self.overrideCursor(self._cursor)
+        pass
 
     def leaveEvent(self, ev):
-        self.restoreCursor()
+        pass
 
     def focusOutEvent(self, ev):
-        self.restoreCursor()
-
-    def isVisible(self, shape):
-        return self.visible.get(shape, True)
+        pass
 
     def mouseMoveEvent(self, ev):
         pos = self.transformPos(ev.pos())
@@ -135,6 +127,8 @@ class Canvas(QWidget):
                     val, idx = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
                     nearby = val < self.epsilon / self.scale
                     if nearby and (self.matching.selected_idx_j is not None):
+                        # if self.matching.get_pair_idx() is None:
+                        #     self.parent().addPair()
                         try:
                             self.matching.append_match(
                                 idx,
@@ -151,6 +145,8 @@ class Canvas(QWidget):
                     val, idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
                     nearby = val < self.epsilon / self.scale
                     if nearby and (self.matching.selected_idx_i is not None):
+                        # if self.matching.get_pair_idx() is None:
+                        #     self.parent().addPair()
                         try:
                             self.matching.append_match(
                                 self.matching.selected_idx_i,
@@ -289,18 +285,6 @@ class Canvas(QWidget):
         return QPointF(x, y)
 
     def finalise(self):
-        assert self.current
-        if self.current.points[0] == self.current.points[-1]:
-            self.current = None
-            self.drawingPolygon.emit(False)
-            self.update()
-            return
-
-        self.current.close()
-        self.shapes.append(self.current)
-        self.current = None
-        self.setHiding(False)
-        self.newShape.emit()
         self.update()
 
     # These two, along with a call to adjustSize are required for the
@@ -334,42 +318,3 @@ class Canvas(QWidget):
             v_delta and self.scrollRequest.emit(v_delta, Qt.Vertical)
             h_delta and self.scrollRequest.emit(h_delta, Qt.Horizontal)
         ev.accept()
-
-    def keyPressEvent(self, ev):
-        key = ev.key()
-        # if key == Qt.Key_Escape and self.current:
-        #     print('ESC press')
-        #     self.current = None
-        #     self.drawingPolygon.emit(False)
-        #     self.update()
-        # elif key == Qt.Key_Return and self.canCloseShape():
-        #     self.finalise()
-        # elif key == Qt.Key_Left and self.selectedShape:
-        #     self.moveOnePixel('Left')
-        # elif key == Qt.Key_Right and self.selectedShape:
-        #     self.moveOnePixel('Right')
-        # elif key == Qt.Key_Up and self.selectedShape:
-        #     self.moveOnePixel('Up')
-        # elif key == Qt.Key_Down and self.selectedShape:
-        #     self.moveOnePixel('Down')
-
-    def currentCursor(self):
-        cursor = QApplication.overrideCursor()
-        if cursor is not None:
-            cursor = cursor.shape()
-        return cursor
-
-    def overrideCursor(self, cursor):
-        self._cursor = cursor
-        if self.currentCursor() is None:
-            QApplication.setOverrideCursor(cursor)
-        else:
-            QApplication.changeOverrideCursor(cursor)
-
-    def restoreCursor(self):
-        QApplication.restoreOverrideCursor()
-
-    def resetState(self):
-        self.restoreCursor()
-        self.pixmap = None
-        self.update()
