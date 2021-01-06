@@ -12,6 +12,14 @@
 
 ## How to Use
 
+### Windows
+
+You can use binary file. Please download from the [Release](https://github.com/daisatojp/PointMatcher/releases).
+
+### Other OS
+
+I haven't made binary for other than Windows. Please use python scripts directory.
+
 download or clone repository
 
 ```bash
