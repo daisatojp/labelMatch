@@ -18,6 +18,7 @@ cscope*
 .subvimrc
 .vscode
 *.pkl
+*.spec
 
 # MacOS System-Generated
 .DS_Store

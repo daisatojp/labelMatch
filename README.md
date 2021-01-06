@@ -6,6 +6,7 @@
 
 ## Requirements
 
+* Windows
 * Python 3
 * PyQT5
 
@@ -14,13 +15,13 @@
 download or clone repository
 
 ```bash
-clone https://github.com/daisatojp/PointMatcher.git --recursive
+git clone https://github.com/daisatojp/PointMatcher.git --recursive
 ```
 
 Install dependencies
 
 ```bash
-pip install pyqt5
+pip install numpy==1.19.3 pyqt5
 ```
 
 Run
@@ -37,7 +38,7 @@ If you don't have annotation file (matching file)
 2. choose directory that stores images
 3. choose annotation file to be saved
 4. click ok
-5. let's annotation
+5. let's enjoy annotation!
 
 If you have annotation file
 
@@ -45,7 +46,7 @@ If you have annotation file
 2. choose directory that stores images
 3. click "Open File" from toolbox
 4. choose annotation file
-5. let's annotation
+5. let's enjoy annotation!
 
 ## Annotation format
 
