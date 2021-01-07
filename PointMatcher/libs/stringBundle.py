@@ -5,6 +5,7 @@ import os
 import os.path as osp
 import sys
 import locale
+from PointMatcher.libs.utils import string_path
 
 
 try:
@@ -29,7 +30,7 @@ class StringBundle:
     def __init__(self, create_key, localeStr):
         assert(create_key == StringBundle.__create_key), "StringBundle must be created using StringBundle.getBundle"
         self.idToMessage = {}
-        self.__loadBundle(resource_path(osp.join('PointMatcher', 'strings', 'strings.properties')))
+        self.__loadBundle(string_path('strings'))
         # paths = self.__createLookupFallbackList(localeStr)
         # for path in paths:
         #     self.__loadBundle(path)

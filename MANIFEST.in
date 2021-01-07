@@ -1,1 +1,3 @@
 include README.md
+include PointMatcher/icons/*
+include PointMatcher/strings/*

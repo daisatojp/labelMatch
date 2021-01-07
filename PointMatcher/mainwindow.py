@@ -1,3 +1,5 @@
+import os
+import os.path as osp
 from functools import partial
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
@@ -10,7 +12,7 @@ from PointMatcher.libs.canvas import Canvas
 from PointMatcher.libs.zoomWidget import ZoomWidget
 from PointMatcher.libs.newFileDialog import NewFileDialog
 from PointMatcher.libs.toolBar import ToolBar
-from PointMatcher.libs.utils import newAction, addActions, fmtShortcut, struct, resource_path
+from PointMatcher.libs.utils import newAction, addActions, fmtShortcut, struct, icon_path, string_path
 
 
 class WindowMixin(object):

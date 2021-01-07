@@ -6,36 +6,32 @@
 
 ## Requirements
 
-* Windows
-* Python 3
+* Python3
 * PyQT5
 
 ## How to Use
 
-### Windows
+### with Binary (Windows only)
 
 You can use binary file. Please download from the [Release](https://github.com/daisatojp/PointMatcher/releases).
 
-### Other OS
+### with pip (Any OS)
 
-I haven't made binary for other than Windows. Please use python scripts directory.
+I haven't made binary for other than Windows yet. Please download through pip.
 
-download or clone repository
+```bash
+conda create --name=PointMatcher python=3.7
+conda activate PointMatcher
+pip install PointMatcher
+PointMatcher
+```
+
+### with git-clone (Any OS)
 
 ```bash
 git clone https://github.com/daisatojp/PointMatcher.git --recursive
-```
-
-Install dependencies
-
-```bash
-pip install numpy==1.19.3 pyqt5
-```
-
-Run
-
-```bash
-python PointMatcher.py
+cd PointMatcher
+python PointMatcher/__main__.py
 ```
 
 ## Quick Start (Examle)

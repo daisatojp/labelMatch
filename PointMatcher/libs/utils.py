@@ -7,16 +7,27 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
 
-def resource_path(relative):
+here = osp.dirname(osp.abspath(__file__))
+
+
+def icon_path(icon):
     if hasattr(sys, '_MEIPASS'):
-        return osp.join(sys._MEIPASS, relative)
-    return osp.join(relative)
+        return osp.join(sys._MEIPASS, 'PointMatcher', 'icons', '{}.png'.format(icon))
+    icons_dir = osp.join(here, '..', 'icons')
+    return osp.join(icons_dir, '{}.png'.format(icon))
+
+
+def string_path(string):
+    if hasattr(sys, '_MEIPASS'):
+        return osp.join(sys._MEIPASS, 'PointMatcher', 'strings', '{}.properties'.format(string))
+    strings_dir = osp.join(here, '..', 'strings')
+    return osp.join(strings_dir, '{}.properties'.format(string))
 
 
 def newButton(text, icon=None, slot=None):
     b = QPushButton(text)
     if icon is not None:
-        b.setIcon(QIcon(icon))
+        b.setIcon(QIcon(icon_path(icon)))
     if slot is not None:
         b.clicked.connect(slot)
     return b
@@ -27,9 +38,7 @@ def newAction(parent, text, slot=None, shortcut=None, icon=None,
     """Create a new action and assign callbacks, shortcuts, etc."""
     a = QAction(text, parent)
     if icon is not None:
-        a.setIcon(QIcon(
-            resource_path(
-                osp.join('PointMatcher', 'icons', icon + '.png'))))
+        a.setIcon(QIcon(icon_path(icon)))
     if shortcut is not None:
         if isinstance(shortcut, (list, tuple)):
             a.setShortcuts(shortcut)
