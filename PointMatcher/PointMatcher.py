@@ -1,17 +1,15 @@
 #!/usr/bin/env python
 
+import sys
 import argparse
-import codecs
-import distutils.spawn
 import os
 import os.path as osp
-import json
-import numpy as np
 from functools import partial
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from libs.utils import *
+
+from __init__ import __appname__, __version__
 from libs.settings import Settings
 from libs.matching import Matching
 from libs.stringBundle import StringBundle
@@ -19,9 +17,7 @@ from libs.canvas import Canvas
 from libs.zoomWidget import ZoomWidget
 from libs.newFileDialog import NewFileDialog
 from libs.toolBar import ToolBar
-
-__app_name__ = 'PointMatcher'
-__app_version__ = '1.0.0'
+from libs.utils import newAction, addActions, fmtShortcut, struct, resource_path
 
 
 class WindowMixin(object):
@@ -48,7 +44,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def __init__(self, defaultFilename=None, defaultPrefdefClassFile=None, defaultSaveDir=None):
         super(MainWindow, self).__init__()
-        self.setWindowTitle(__app_name__)
+        self.setWindowTitle(__appname__)
 
         self.settings = Settings()
         self.settings.load()
@@ -252,7 +248,7 @@ class MainWindow(QMainWindow, WindowMixin):
              None, addPair, removePair, openNextPair, openPrevPair,
              None, zoomIn, zoom, zoomOut, fitWindow, fitWidth))
 
-        self.statusBar().showMessage('{} started.'.format(__app_name__))
+        self.statusBar().showMessage('{} started.'.format(__appname__))
         self.statusBar().show()
 
         self.image = QImage()
@@ -453,7 +449,7 @@ class MainWindow(QMainWindow, WindowMixin):
         else:
             defaultDir = '.'
         self.imageDir = QFileDialog.getExistingDirectory(
-            self, '{} - Open Directory'.format(__app_name__), defaultDir,
+            self, '{} - Open Directory'.format(__appname__), defaultDir,
             QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
 
     def newFile(self, _value=False):
@@ -546,7 +542,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.setEditMatchMode()
 
     def showInfoDialog(self):
-        msg = '{0}\nversion : {1}'.format(__app_name__, __app_version__)
+        msg = '{0}\nversion : {1}'.format(__appname__, __version__)
         QMessageBox.information(self, 'Information', msg)
 
     def getMatchingUpdateEvent(self):
@@ -619,8 +615,8 @@ def get_main_app(argv=[]):
     Do everything but app.exec_() -- so that we can test the application in one thread
     """
     app = QApplication(argv)
-    app.setApplicationName(__app_name__)
-    app.setWindowIcon(QIcon(osp.join('resources', 'icons', 'app.png')))
+    app.setApplicationName(__appname__)
+    app.setWindowIcon(QIcon(resource_path(osp.join('PointMatcher', 'icons', 'app.png'))))
     # Tzutalin 201705+: Accept extra agruments to change predefined class file
     argparser = argparse.ArgumentParser()
     argparser.add_argument("image_dir", nargs="?")
@@ -638,7 +634,6 @@ def get_main_app(argv=[]):
 
 
 def main():
-    '''construct main app and run it'''
     app, _win = get_main_app(sys.argv)
     return app.exec_()
 
