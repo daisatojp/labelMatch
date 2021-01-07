@@ -66,7 +66,7 @@ def main():
         package_data={'PointMatcher': ['icons/*', 'strings/*']},
         entry_points={
             'console_scripts': [
-                'PointMatcher=PointMatcher.PointMatcher:main',
+                'PointMatcher=PointMatcher.__main__:main',
             ],
         },
         data_files=[],
