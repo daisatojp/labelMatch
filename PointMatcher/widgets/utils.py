@@ -33,8 +33,10 @@ def newButton(text, icon=None, slot=None):
     return b
 
 
-def newAction(parent, text, slot=None, shortcut=None, icon=None,
-              tip=None, checkable=False, enabled=True):
+def newAction(
+        parent, text,
+        slot=None, shortcut=None, icon=None,
+        tip=None, checkable=False, enabled=True):
     """Create a new action and assign callbacks, shortcuts, etc."""
     a = QAction(text, parent)
     if icon is not None:
@@ -65,10 +67,6 @@ def addActions(widget, actions):
             widget.addAction(action)
 
 
-def labelValidator():
-    return QRegExpValidator(QRegExp(r'^[^ \t].+'), None)
-
-
 class struct(object):
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
@@ -77,15 +75,6 @@ class struct(object):
 def fmtShortcut(text):
     mod, key = text.split('+', 1)
     return '<b>%s</b>+<b>%s</b>' % (mod, key)
-
-
-def have_qstring():
-    '''p3/qt5 get rid of QString wrapper as py3 has native unicode str type'''
-    return not (sys.version_info.major >= 3 or QT_VERSION_STR.startswith('5.'))
-
-
-def util_qt_strlistclass():
-    return QStringList if have_qstring() else list
 
 
 def natural_sort(list, key=lambda s:s):

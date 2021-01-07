@@ -117,6 +117,9 @@ class MainWindow(QMainWindow, WindowMixin):
         saveFile = newAction(
             self, getStr('saveFile'), self.saveFile,
             'Ctrl+S', 'save', getStr('saveFileDetail'), enabled=False)
+        saveFileAs = newAction(
+            self, getStr('saveFileAs'), self.saveFileAs,
+            'Ctrl+Alt+S', 'save', getStr('saveFileAsDetail'), enabled=False)
         closeFile = newAction(
             self, getStr('closeFile'), self.closeFile,
             'Ctrl+W', 'close', getStr('closeFileDetail'))
@@ -198,6 +201,7 @@ class MainWindow(QMainWindow, WindowMixin):
             newFile=newFile,
             openFile=openFile,
             saveFile=saveFile,
+            saveFileAs=saveFileAs,
             closeFile=closeFile,
             openNextPair=openNextPair,
             openPrevPair=openPrevPair,
@@ -222,7 +226,7 @@ class MainWindow(QMainWindow, WindowMixin):
         # setup menus
         addActions(
             self.menus.file,
-            (openDir, newFile, openFile, saveFile, closeFile, quitApp))
+            (openDir, newFile, openFile, saveFile, saveFileAs, closeFile, quitApp))
         addActions(
             self.menus.edit,
             (addPair, removePair, None, editKeypointMode, editMatchMode))
@@ -239,14 +243,13 @@ class MainWindow(QMainWindow, WindowMixin):
         self.tools = self.toolbar('Tools')
         addActions(
             self.tools,
-            (openDir, openFile, saveFile,
+            (openDir, openFile, saveFile, saveFileAs,
              None, addPair, removePair, openNextPair, openPrevPair,
              None, zoomIn, zoom, zoomOut, fitWindow, fitWidth))
 
         self.statusBar().showMessage('{} started.'.format(__appname__))
         self.statusBar().show()
 
-        self.image = QImage()
         self.zoom_level = 100
         self.fit_window = False
 
@@ -403,6 +406,7 @@ class MainWindow(QMainWindow, WindowMixin):
             view_id_i = self.matching.get_views()[0]['id_view']
             view_id_j = self.matching.get_views()[1]['id_view']
         self.changePair(view_id_i, view_id_j)
+        self.actions.saveFileAs.setEnabled(True)
 
     def resizeEvent(self, event):
         super(MainWindow, self).resizeEvent(event)
@@ -470,8 +474,13 @@ class MainWindow(QMainWindow, WindowMixin):
     def openFile(self, _value=False):
         if not self.mayContinue():
             return
-        path = osp.dirname(self.savePath) if self.savePath else '.'
-        filters = 'matching file (*.json)'
+        if (self.savePath is not None) and osp.exists(osp.dirname(self.savePath)):
+            path = osp.dirname(self.savePath)
+        elif (self.imageDir is not None) and osp.exists(self.imageDir):
+            path = self.imageDir
+        else:
+            path = '.'
+        filters = 'matching file (*.json *.pkl)'
         filename = QFileDialog.getOpenFileName(
             self, 'choose matching file', path, filters)
         if filename:
@@ -488,6 +497,22 @@ class MainWindow(QMainWindow, WindowMixin):
         if self.savePath:
             self.matching.save(self.savePath)
             self.actions.saveFile.setEnabled(False)
+
+    def saveFileAs(self, _value=False):
+        if (self.savePath is not None) and osp.exists(osp.dirname(self.savePath)):
+            path = osp.dirname(self.savePath)
+        elif (self.imageDir is not None) and osp.exists(self.imageDir):
+            path = self.imageDir
+        else:
+            path = '.'
+        filters = 'matching file (*.json *.pkl)'
+        filename = QFileDialog.getSaveFileName(
+            self, 'choose file name to be saved', path, filters)
+        if filename:
+            if isinstance(filename, (tuple, list)):
+                filename = filename[0]
+            self.savePath = filename
+            self.matching.save(self.savePath)
 
     def closeFile(self, _value=False):
         if not self.mayContinue():
@@ -543,9 +568,9 @@ class MainWindow(QMainWindow, WindowMixin):
     def getMatchingUpdateEvent(self):
         view_id_i = self.matching.get_view_id_i()
         view_id_j = self.matching.get_view_id_j()
-        self.viewListWidgetI.item(self.matching.get_view_idx_i()).setText(
+        self.viewIListWidget.item(self.matching.get_view_idx_i()).setText(
             self.getViewItemText(view_id_i))
-        self.viewListWidgetJ.item(self.matching.get_view_idx_j()).setText(
+        self.viewJListWidget.item(self.matching.get_view_idx_j()).setText(
             self.getViewItemText(view_id_j))
         pair_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
         if pair_idx is not None:

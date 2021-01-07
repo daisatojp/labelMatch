@@ -1,6 +1,7 @@
 import os
 import os.path as osp
 import json
+import pickle
 import cv2
 from PyQt5.QtGui import *
 
@@ -31,8 +32,15 @@ class Matching:
         if type(data) is dict:
             self.data = data
         elif type(data) is str:
-            with open(data, 'r') as f:
-                self.data = json.load(f)
+            ext = osp.splitext(data)
+            if ext == '.json':
+                with open(data, 'r') as f:
+                    self.data = json.load(f)
+            elif ext == '.pkl':
+                with open(data, 'rb') as f:
+                    self.data = pickle.load(f)
+            else:
+                raise RuntimeError('invalid filename ({})'.format(data))
         else:
             self.data = None
         self.image_dir = image_dir
@@ -325,8 +333,15 @@ class Matching:
         self.selected_idx_j = None
 
     def save(self, file_path):
-        with open(file_path, 'w') as f:
-            json.dump(self.data, f)
+        ext = osp.splitext(file_path)[1]
+        if ext == '.json':
+            with open(file_path, 'w') as f:
+                json.dump(self.data, f)
+        elif ext == '.pkl':
+            with open(file_path, 'wb') as f:
+                pickle.dump(self.data, f)
+        else:
+            raise RuntimeError('invalid file_path ({})'.format(file_path))
         self._dirty = False
 
     def set_update(self):
