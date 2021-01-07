@@ -2,16 +2,12 @@
 
 import sys
 import argparse
-import os
-import os.path as osp
-from functools import partial
 from PyQt5.QtGui import *
-from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 
-from PointMatcher.__init__ import __appname__, __version__
-from PointMatcher.mainwindow import MainWindow
-from PointMatcher.libs.utils import icon_path
+from PointMatcher.__init__ import __appname__
+from PointMatcher.widgets.mainwindow import MainWindow
+from PointMatcher.widgets.utils import icon_path
 
 
 def main():

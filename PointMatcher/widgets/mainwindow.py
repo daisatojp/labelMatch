@@ -5,14 +5,14 @@ from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PointMatcher.__init__ import __appname__, __version__
-from PointMatcher.libs.settings import Settings
-from PointMatcher.libs.matching import Matching
-from PointMatcher.libs.stringBundle import StringBundle
-from PointMatcher.libs.canvas import Canvas
-from PointMatcher.libs.zoomWidget import ZoomWidget
-from PointMatcher.libs.newFileDialog import NewFileDialog
-from PointMatcher.libs.toolBar import ToolBar
-from PointMatcher.libs.utils import newAction, addActions, fmtShortcut, struct, icon_path, string_path
+from PointMatcher.data.matching import Matching
+from PointMatcher.widgets.settings import Settings
+from PointMatcher.widgets.stringbundle import StringBundle
+from PointMatcher.widgets.canvas import Canvas
+from PointMatcher.widgets.zoomwidget import ZoomWidget
+from PointMatcher.widgets.newfile_dialog import NewFileDialog
+from PointMatcher.widgets.toolbar import ToolBar
+from PointMatcher.widgets.utils import newAction, addActions, fmtShortcut, struct, icon_path, string_path
 
 
 class WindowMixin(object):
@@ -52,30 +52,30 @@ class MainWindow(QMainWindow, WindowMixin):
         self.imageDir = None
         self.savePath = None
 
-        self.viewListWidgetI = QListWidget()
-        self.viewListWidgetI.itemDoubleClicked.connect(self.viewitemDoubleClickedI)
-        viewlistLayoutI = QVBoxLayout()
-        viewlistLayoutI.setContentsMargins(0, 0, 0, 0)
-        viewlistLayoutI.addWidget(self.viewListWidgetI)
-        viewListContainerI = QWidget()
-        viewListContainerI.setLayout(viewlistLayoutI)
-        self.viewdockI = QDockWidget(getStr('viewListI'), self)
-        self.viewdockI.setObjectName(getStr('views'))
-        self.viewdockI.setWidget(viewListContainerI)
+        self.viewIListWidget = QListWidget()
+        self.viewIListWidget.itemClicked.connect(self.viewIitemClicked)
+        viewIlistLayout = QVBoxLayout()
+        viewIlistLayout.setContentsMargins(0, 0, 0, 0)
+        viewIlistLayout.addWidget(self.viewIListWidget)
+        viewIListContainer = QWidget()
+        viewIListContainer.setLayout(viewIlistLayout)
+        self.viewIdock = QDockWidget(getStr('viewIList'), self)
+        self.viewIdock.setObjectName(getStr('views'))
+        self.viewIdock.setWidget(viewIListContainer)
 
-        self.viewListWidgetJ = QListWidget()
-        self.viewListWidgetJ.itemDoubleClicked.connect(self.viewitemDoubleClickedJ)
-        viewlistLayoutJ = QVBoxLayout()
-        viewlistLayoutJ.setContentsMargins(0, 0, 0, 0)
-        viewlistLayoutJ.addWidget(self.viewListWidgetJ)
-        viewListContainerJ = QWidget()
-        viewListContainerJ.setLayout(viewlistLayoutJ)
-        self.viewdockJ = QDockWidget(getStr('viewListJ'), self)
-        self.viewdockJ.setObjectName(getStr('views'))
-        self.viewdockJ.setWidget(viewListContainerJ)
+        self.viewJListWidget = QListWidget()
+        self.viewJListWidget.itemClicked.connect(self.viewJitemClicked)
+        viewJlistLayout = QVBoxLayout()
+        viewJlistLayout.setContentsMargins(0, 0, 0, 0)
+        viewJlistLayout.addWidget(self.viewJListWidget)
+        viewJListContainer = QWidget()
+        viewJListContainer.setLayout(viewJlistLayout)
+        self.viewJdock = QDockWidget(getStr('viewJList'), self)
+        self.viewJdock.setObjectName(getStr('views'))
+        self.viewJdock.setWidget(viewJListContainer)
 
         self.pairListWidget = QListWidget()
-        self.pairListWidget.itemDoubleClicked.connect(self.pairitemDoubleClicked)
+        self.pairListWidget.itemClicked.connect(self.pairitemClicked)
         pairlistLayout = QVBoxLayout()
         pairlistLayout.setContentsMargins(0, 0, 0, 0)
         pairlistLayout.addWidget(self.pairListWidget)
@@ -99,10 +99,10 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.setCentralWidget(scroll)
         self.addDockWidget(Qt.RightDockWidgetArea, self.pairdock)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.viewdockI)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.viewdockJ)
-        self.viewdockI.setFeatures(QDockWidget.DockWidgetFloatable)
-        self.viewdockJ.setFeatures(QDockWidget.DockWidgetFloatable)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.viewIdock)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.viewJdock)
+        self.viewIdock.setFeatures(QDockWidget.DockWidgetFloatable)
+        self.viewJdock.setFeatures(QDockWidget.DockWidgetFloatable)
 
         # File menu
         openDir = newAction(
@@ -274,22 +274,22 @@ class MainWindow(QMainWindow, WindowMixin):
     def keyPressEvent(self, ev):
         pass
 
-    def pairitemDoubleClicked(self, item=None):
+    def viewIitemClicked(self, item=None):
+        view_id_i = self.matching.get_views()[self.viewIListWidget.currentIndex().row()]['id_view']
+        view_id_j = self.matching.get_views()[self.viewJListWidget.currentIndex().row()]['id_view']
+        self.changePair(view_id_i, view_id_j)
+
+    def viewJitemClicked(self, item=None):
+        id_view_i = self.matching.get_views()[self.viewIListWidget.currentIndex().row()]['id_view']
+        id_view_j = self.matching.get_views()[self.viewJListWidget.currentIndex().row()]['id_view']
+        self.changePair(id_view_i, id_view_j)
+
+    def pairitemClicked(self, item=None):
         idx = self.pairListWidget.currentIndex().row()
         if idx < len(self.matching.get_pairs()):
             view_id_i = self.matching.get_pairs()[idx]['id_view_i']
             view_id_j = self.matching.get_pairs()[idx]['id_view_j']
             self.changePair(view_id_i, view_id_j)
-
-    def viewitemDoubleClickedI(self, item=None):
-        view_id_i = self.matching.get_views()[self.viewListWidgetI.currentIndex().row()]['id_view']
-        view_id_j = self.matching.get_views()[self.viewListWidgetJ.currentIndex().row()]['id_view']
-        self.changePair(view_id_i, view_id_j)
-
-    def viewitemDoubleClickedJ(self, item=None):
-        id_view_i = self.matching.get_views()[self.viewListWidgetI.currentIndex().row()]['id_view']
-        id_view_j = self.matching.get_views()[self.viewListWidgetJ.currentIndex().row()]['id_view']
-        self.changePair(id_view_i, id_view_j)
 
     def changePair(self, view_id_i, view_id_j):
         if len(self.matching.get_pairs()) < self.pairListWidget.count():
@@ -309,8 +309,8 @@ class MainWindow(QMainWindow, WindowMixin):
             self.actions.openNextPair.setEnabled(False)
             self.actions.openPrevPair.setEnabled(False)
         self.matching.set_view(view_id_i, view_id_j)
-        self.viewListWidgetI.setCurrentRow(self.matching.get_view_idx_i())
-        self.viewListWidgetJ.setCurrentRow(self.matching.get_view_idx_j())
+        self.viewIListWidget.setCurrentRow(self.matching.get_view_idx_i())
+        self.viewJListWidget.setCurrentRow(self.matching.get_view_idx_j())
         self.canvas.updatePixmap()
         self.canvas.repaint()
 
@@ -387,12 +387,12 @@ class MainWindow(QMainWindow, WindowMixin):
         self.matching.set_update_callback(self.getMatchingUpdateEvent)
         self.matching.set_dirty_callback(self.getMatchingDirtyEvent)
         self.canvas.setMatching(self.matching)
-        self.viewListWidgetI.clear()
-        self.viewListWidgetJ.clear()
+        self.viewIListWidget.clear()
+        self.viewJListWidget.clear()
         self.pairListWidget.clear()
         for view in self.matching.get_views():
-            self.viewListWidgetI.addItem(self.getViewItemText(view['id_view']))
-            self.viewListWidgetJ.addItem(self.getViewItemText(view['id_view']))
+            self.viewIListWidget.addItem(self.getViewItemText(view['id_view']))
+            self.viewJListWidget.addItem(self.getViewItemText(view['id_view']))
         for pair in self.matching.get_pairs():
             self.pairListWidget.addItem(self.getPairItemText(
                 pair['id_view_i'], pair['id_view_j']))

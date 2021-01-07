@@ -5,7 +5,7 @@ import os
 import os.path as osp
 import sys
 import locale
-from PointMatcher.libs.utils import string_path
+from PointMatcher.widgets.utils import string_path
 
 
 try:
