@@ -6,6 +6,7 @@ import os.path as osp
 import sys
 import locale
 
+
 try:
     from PyQt5.QtCore import *
 except ImportError:
@@ -15,6 +16,12 @@ except ImportError:
     from PyQt4.QtCore import *
 
 
+def resource_path(relative):
+    if hasattr(sys, '_MEIPASS'):
+        return osp.join(sys._MEIPASS, relative)
+    return osp.join(relative)
+
+
 class StringBundle:
 
     __create_key = object()
@@ -22,7 +29,7 @@ class StringBundle:
     def __init__(self, create_key, localeStr):
         assert(create_key == StringBundle.__create_key), "StringBundle must be created using StringBundle.getBundle"
         self.idToMessage = {}
-        self.__loadBundle(osp.join('resources', 'strings', 'strings.properties'))
+        self.__loadBundle(resource_path(osp.join('PointMatcher', 'strings', 'strings.properties')))
         # paths = self.__createLookupFallbackList(localeStr)
         # for path in paths:
         #     self.__loadBundle(path)

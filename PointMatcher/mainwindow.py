@@ -1,27 +1,16 @@
-#!/usr/bin/env python
-
-import argparse
-import codecs
-import distutils.spawn
-import os
-import os.path as osp
-import json
-import numpy as np
 from functools import partial
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from libs.utils import *
-from libs.settings import Settings
-from libs.matching import Matching
-from libs.stringBundle import StringBundle
-from libs.canvas import Canvas
-from libs.zoomWidget import ZoomWidget
-from libs.newFileDialog import NewFileDialog
-from libs.toolBar import ToolBar
-
-__app_name__ = 'PointMatcher'
-__app_version__ = '1.0.0'
+from PointMatcher.__init__ import __appname__, __version__
+from PointMatcher.libs.settings import Settings
+from PointMatcher.libs.matching import Matching
+from PointMatcher.libs.stringBundle import StringBundle
+from PointMatcher.libs.canvas import Canvas
+from PointMatcher.libs.zoomWidget import ZoomWidget
+from PointMatcher.libs.newFileDialog import NewFileDialog
+from PointMatcher.libs.toolBar import ToolBar
+from PointMatcher.libs.utils import newAction, addActions, fmtShortcut, struct, resource_path
 
 
 class WindowMixin(object):
@@ -46,9 +35,9 @@ class WindowMixin(object):
 class MainWindow(QMainWindow, WindowMixin):
     FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = list(range(3))
 
-    def __init__(self, defaultFilename=None, defaultPrefdefClassFile=None, defaultSaveDir=None):
+    def __init__(self):
         super(MainWindow, self).__init__()
-        self.setWindowTitle(__app_name__)
+        self.setWindowTitle(__appname__)
 
         self.settings = Settings()
         self.settings.load()
@@ -252,7 +241,7 @@ class MainWindow(QMainWindow, WindowMixin):
              None, addPair, removePair, openNextPair, openPrevPair,
              None, zoomIn, zoom, zoomOut, fitWindow, fitWidth))
 
-        self.statusBar().showMessage('{} started.'.format(__app_name__))
+        self.statusBar().showMessage('{} started.'.format(__appname__))
         self.statusBar().show()
 
         self.image = QImage()
@@ -453,7 +442,7 @@ class MainWindow(QMainWindow, WindowMixin):
         else:
             defaultDir = '.'
         self.imageDir = QFileDialog.getExistingDirectory(
-            self, '{} - Open Directory'.format(__app_name__), defaultDir,
+            self, '{} - Open Directory'.format(__appname__), defaultDir,
             QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
 
     def newFile(self, _value=False):
@@ -546,7 +535,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.setEditMatchMode()
 
     def showInfoDialog(self):
-        msg = '{0}\nversion : {1}'.format(__app_name__, __app_version__)
+        msg = '{0}\nversion : {1}'.format(__appname__, __version__)
         QMessageBox.information(self, 'Information', msg)
 
     def getMatchingUpdateEvent(self):
@@ -611,37 +600,3 @@ class MainWindow(QMainWindow, WindowMixin):
                     image_paths.append(path)
         natural_sort(image_paths, key=lambda x: x.lower())
         return image_paths
-
-
-def get_main_app(argv=[]):
-    """
-    Standard boilerplate Qt application code.
-    Do everything but app.exec_() -- so that we can test the application in one thread
-    """
-    app = QApplication(argv)
-    app.setApplicationName(__app_name__)
-    app.setWindowIcon(QIcon(osp.join('resources', 'icons', 'app.png')))
-    # Tzutalin 201705+: Accept extra agruments to change predefined class file
-    argparser = argparse.ArgumentParser()
-    argparser.add_argument("image_dir", nargs="?")
-    argparser.add_argument("predefined_classes_file",
-                           default=os.path.join(os.path.dirname(__file__), "data", "predefined_classes.txt"),
-                           nargs="?")
-    argparser.add_argument("save_dir", nargs="?")
-    args = argparser.parse_args(argv[1:])
-    # Usage : labelImg.py image predefClassFile saveDir
-    win = MainWindow(args.image_dir,
-                     args.predefined_classes_file,
-                     args.save_dir)
-    win.show()
-    return app, win
-
-
-def main():
-    '''construct main app and run it'''
-    app, _win = get_main_app(sys.argv)
-    return app.exec_()
-
-
-if __name__ == '__main__':
-    sys.exit(main())

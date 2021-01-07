@@ -1,11 +1,16 @@
 import os
 import os.path as osp
-import hashlib
 import re
 import sys
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
+
+
+def resource_path(relative):
+    if hasattr(sys, '_MEIPASS'):
+        return osp.join(sys._MEIPASS, relative)
+    return osp.join(relative)
 
 
 def newButton(text, icon=None, slot=None):
@@ -22,7 +27,9 @@ def newAction(parent, text, slot=None, shortcut=None, icon=None,
     """Create a new action and assign callbacks, shortcuts, etc."""
     a = QAction(text, parent)
     if icon is not None:
-        a.setIcon(QIcon(osp.join('resources', 'icons', icon + '.png')))
+        a.setIcon(QIcon(
+            resource_path(
+                osp.join('PointMatcher', 'icons', icon + '.png'))))
     if shortcut is not None:
         if isinstance(shortcut, (list, tuple)):
             a.setShortcuts(shortcut)
@@ -54,7 +61,6 @@ def labelValidator():
 
 
 class struct(object):
-
     def __init__(self, **kwargs):
         self.__dict__.update(kwargs)
 
