@@ -6,7 +6,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PointMatcher.__init__ import __appname__, __version__
 from PointMatcher.data.matching import Matching
-from PointMatcher.actions import OpenDirAction, NewFileAction
+from PointMatcher.actions import *
 from PointMatcher.widgets.viewwidget import ViewWidget
 from PointMatcher.widgets.pairwidget import PairWidget
 from PointMatcher.widgets.settings import Settings
@@ -45,22 +45,18 @@ class MainWindow(QMainWindow, WindowMixin):
         super(MainWindow, self).__init__()
         self.setWindowTitle(__appname__)
 
-        self.settings = Settings()
-        self.settings.load()
-
         self.matching = None
-
-        self.stringBundle = StringBundle.getBundle()
-        getStr = self.stringBundle.getString
-
         self.imageDir = None
         self.savePath = None
 
-        self.viewIWidget = ViewWidget(parent=self, title=getStr('viewIList'))
+        self.settings = Settings()
+        self.settings.load()
+
+        self.viewIWidget = ViewWidget(parent=self, title='View List (First)')
         self.viewIWidget.itemClicked_connect(self.viewIitemClicked)
-        self.viewJWidget = ViewWidget(parent=self, title=getStr('viewJList'))
+        self.viewJWidget = ViewWidget(parent=self, title='View List (Second)')
         self.viewJWidget.itemClicked_connect(self.viewJitemClicked)
-        self.pairWidget = PairWidget(parent=self, title=getStr('pairList'))
+        self.pairWidget = PairWidget(parent=self, title='Pair List')
         self.pairWidget.itemClicked_connect(self.pairitemClicked)
 
         self.canvas = Canvas(parent=self)
@@ -74,83 +70,24 @@ class MainWindow(QMainWindow, WindowMixin):
         self.addDockWidget(Qt.RightDockWidgetArea, self.viewIWidget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.viewJWidget)
 
-        # File menu
-        openDir = OpenDirAction(self)
-        newFile = NewFileAction(self)
-        openFile = newAction(
-            self, getStr('openFile'), self.openFile,
-            'Ctrl+O', 'open', getStr('openFileDetail'))
-        saveFile = newAction(
-            self, getStr('saveFile'), self.saveFile,
-            'Ctrl+S', 'save', getStr('saveFileDetail'), enabled=False)
-        saveFileAs = newAction(
-            self, getStr('saveFileAs'), self.saveFileAs,
-            'Ctrl+Alt+S', 'save', getStr('saveFileAsDetail'), enabled=False)
-        closeFile = newAction(
-            self, getStr('closeFile'), self.closeFile,
-            'Ctrl+W', 'close', getStr('closeFileDetail'))
-        quitApp = newAction(
-            self, getStr('quitApp'), self.close,
-            'Ctrl+Q', 'quit', getStr('quitApp'))
-        openNextPair = newAction(
-            self, getStr('openNextPair'), self.openNextPair,
-            'd', 'next', getStr('openNextPairDetail'), enabled=False)
-        openPrevPair = newAction(
-            self, getStr('openPrevPair'), self.openPrevPair,
-            'a', 'prev', getStr('openPrevPairDetail'), enabled=False)
-
-        # View menu
-        autoSaving = QAction(getStr('autoSaveMode'), self)
-        autoSaving.setCheckable(True)
-        autoSaving.setChecked(False)
-
-        # Edit menu
-        addPair = newAction(
-            self, getStr('addPair'), self.addPair,
-            'Ctrl+X', 'save', getStr('addPairDetail'), enabled=False)
-        removePair = newAction(
-            self, getStr('removePair'), self.removePair,
-            'Ctrl+C', 'delete', getStr('removePairDetail'), enabled=False)
-        editKeypointMode = QAction(getStr('editKeypoint'), self)
-        editKeypointMode.triggered.connect(self.editKeypointMode)
-        editKeypointMode.setEnabled(True)
-        editKeypointMode.setCheckable(True)
-        editKeypointMode.setChecked(True)
-        editKeypointMode.setShortcut('v')
-        editMatchMode = QAction(getStr('editMatch'), self)
-        editMatchMode.triggered.connect(self.editMatchMode)
-        editMatchMode.setEnabled(True)
-        editMatchMode.setCheckable(True)
-        editMatchMode.setChecked(False)
-        editMatchMode.setShortcut('e')
-        sanityCheck = newAction(
-            self, getStr('sanityCheck'), self.sanityCheck,
-            None, None, getStr('sanityCheckDetail'))
-        complementMatch = newAction(
-            self, getStr('complementMatch'), self.complementMatch,
-            None, None, getStr('complementMatchDetail'))
-
-        # Help Menu
-        showInfo = newAction(
-            self, getStr('showInfo'), self.showInfoDialog,
-            None, 'help', getStr('showInfoDetail'))
-
         self.actions = struct(
-            openDir=openDir,
-            newFile=newFile,
-            openFile=openFile,
-            saveFile=saveFile,
-            saveFileAs=saveFileAs,
-            closeFile=closeFile,
-            openNextPair=openNextPair,
-            openPrevPair=openPrevPair,
-            addPair=addPair,
-            removePair=removePair,
-            editKeypointMode=editKeypointMode,
-            editMatchMode=editMatchMode,
-            sanityCheck=sanityCheck,
-            complementMatch=complementMatch,
-            autoSaving=autoSaving)
+            openDir=OpenDirAction(self),
+            newFile=NewFileAction(self),
+            openFile=OpenFileAction(self),
+            saveFile=SaveFileAction(self),
+            saveFileAs=SaveFileAsAction(self),
+            closeFile=CloseFileAction(self),
+            quitApp=QuitAppAction(self),
+            openNextPair=OpenNextPairAction(self),
+            openPrevPair=OpenPrevPairAction(self),
+            addPair=AddPairAction(self),
+            removePair=RemovePairAction(self),
+            editKeypointMode=EditKeypointModeAction(self),
+            editMatchMode=EditMatchModeAction(self),
+            sanityCheck=SanityCheckAction(self),
+            complementMatch=ComplementMatchAction(self),
+            autoSaving=AutoSavingAction(self),
+            showInfo = ShowInfoAction(self))
 
         self.menus = struct(
             file=self.menu('&File'),
@@ -159,29 +96,30 @@ class MainWindow(QMainWindow, WindowMixin):
             help=self.menu('&Help'))
 
         # setup menus
+        a = self.actions
         za = self.zoomWidget.actions
         addActions(
             self.menus.file,
-            (openDir, newFile, openFile, saveFile, saveFileAs, closeFile, quitApp))
+            (a.openDir, a.newFile, a.openFile, a.saveFile, a.saveFileAs, a.closeFile, a.quitApp))
         addActions(
             self.menus.edit,
-            (addPair, removePair,
-             None, editKeypointMode, editMatchMode,
-             None, sanityCheck, complementMatch))
+            (a.addPair, a.removePair,
+             None, a.editKeypointMode, a.editMatchMode,
+             None, a.sanityCheck, a.complementMatch))
         addActions(
             self.menus.view,
-            (autoSaving,
+            (a.autoSaving,
              None, za.zoomIn, za.zoomOut, za.zoomOrg, za.zoomFitWindow, za.zoomFitWidth))
         addActions(
             self.menus.help,
-            (showInfo,))
+            (a.showInfo,))
 
         # setup tools
         self.tools = self.toolbar('Tools')
         addActions(
             self.tools,
-            (openDir, openFile, saveFile, saveFileAs,
-             None, addPair, removePair, openNextPair, openPrevPair,
+            (a.openDir, a.openFile, a.saveFile, a.saveFileAs,
+             None, a.addPair, a.removePair, a.openNextPair, a.openPrevPair,
              None, za.zoomIn, za.zoom, za.zoomOut, za.zoomFitWindow, za.zoomFitWidth))
 
         self.statusBar().showMessage('{} started.'.format(__appname__))
@@ -197,9 +135,6 @@ class MainWindow(QMainWindow, WindowMixin):
                 break
         self.resize(size)
         self.move(position)
-
-        # Callbacks:
-        self.zoomWidget.spinbox.valueChanged.connect(self.paintCanvas)
 
         # Display cursor coordinates at the right of status bar
         self.labelCoordinates = QLabel('')
@@ -274,106 +209,6 @@ class MainWindow(QMainWindow, WindowMixin):
         # if not self.mayContinue():
         #     event.ignore()
         self.settings.save()
-
-    def openFile(self, _value=False):
-        if not self.mayContinue():
-            return
-        if (self.savePath is not None) and osp.exists(osp.dirname(self.savePath)):
-            path = osp.dirname(self.savePath)
-        elif (self.imageDir is not None) and osp.exists(self.imageDir):
-            path = self.imageDir
-        else:
-            path = '.'
-        filters = 'matching file (*.json *.pkl)'
-        filename = QFileDialog.getOpenFileName(
-            self, 'choose matching file', path, filters)
-        if filename:
-            if isinstance(filename, (tuple, list)):
-                filename = filename[0]
-            if osp.exists(filename):
-                self.savePath = filename
-                self.loadMatching(filename)
-            else:
-                QMessageBox.warning(self, 'Attention', 'File Not Found', QMessageBox.Ok)
-                return
-
-    def saveFile(self, _value=False):
-        if self.savePath:
-            self.matching.save(self.savePath)
-            self.actions.saveFile.setEnabled(False)
-
-    def saveFileAs(self, _value=False):
-        if (self.savePath is not None) and osp.exists(osp.dirname(self.savePath)):
-            path = osp.dirname(self.savePath)
-        elif (self.imageDir is not None) and osp.exists(self.imageDir):
-            path = self.imageDir
-        else:
-            path = '.'
-        filters = 'matching file (*.json *.pkl)'
-        filename = QFileDialog.getSaveFileName(
-            self, 'choose file name to be saved', path, filters)
-        if filename:
-            if isinstance(filename, (tuple, list)):
-                filename = filename[0]
-            self.savePath = filename
-            self.matching.save(self.savePath)
-
-    def closeFile(self, _value=False):
-        if not self.mayContinue():
-            return
-
-    def openNextPair(self, _value=False):
-        if self.actions.autoSaving.isChecked():
-            self.matching.save(self.savePath)
-        view_id_i, view_id_j = self.matching.get_next_view_pair()
-        self.changePair(view_id_i, view_id_j)
-
-    def openPrevPair(self, _value=False):
-        if self.actions.autoSaving.isChecked():
-            self.matching.save(self.savePath)
-        view_id_i, view_id_j = self.matching.get_prev_view_pair()
-        self.changePair(view_id_i, view_id_j)
-
-    def addPair(self):
-        view_id_i = self.matching.get_view_id_by_view_idx(self.viewIWidget.get_current_idx())
-        view_id_j = self.matching.get_view_id_by_view_idx(self.viewJWidget.get_current_idx())
-        self.matching.append_pair(view_id_i, view_id_j, update=False)
-        self.pairWidget.remove_last_item()
-        self.pairWidget.add_item(self.matching.get_pairs()[-1])
-        self.changePair(view_id_i, view_id_j)
-
-    def removePair(self):
-        view_id_i = self.matching.get_view_id_i()
-        view_id_j = self.matching.get_view_id_j()
-        trans_view_id_i, trans_view_id_j = self.matching.get_prev_view_pair()
-        if (trans_view_id_i, trans_view_id_j) == (view_id_i, view_id_j):
-            trans_view_id_i, trans_view_id_j = self.matching.get_next_view_pair()
-        if (trans_view_id_i, trans_view_id_j) == (view_id_i, view_id_j):
-            trans_view_id_i = self.matching.get_views()[0]['id_view']
-            trans_view_id_j = self.matching.get_views()[1]['id_view']
-        self.pairWidget.remove_item_by_idx(self.matching.get_pair_idx())
-        self.changePair(trans_view_id_i, trans_view_id_j)
-        self.matching.remove_pair(view_id_i, view_id_j)
-
-    def editKeypointMode(self):
-        self.actions.editKeypointMode.setChecked(True)
-        self.actions.editMatchMode.setChecked(False)
-        self.canvas.setEditKeypointMode()
-
-    def editMatchMode(self):
-        self.actions.editKeypointMode.setChecked(False)
-        self.actions.editMatchMode.setChecked(True)
-        self.canvas.setEditMatchMode()
-
-    def sanityCheck(self):
-        pass
-
-    def complementMatch(self):
-        pass
-
-    def showInfoDialog(self):
-        msg = '{0}\nversion : {1}'.format(__appname__, __version__)
-        QMessageBox.information(self, 'Information', msg)
 
     def getMatchingUpdateEvent(self):
         view_id_i = self.matching.get_view_id_i()

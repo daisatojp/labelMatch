@@ -14,8 +14,7 @@ class ZoomWidget:
     def __init__(self, parent, value=100):
         super(ZoomWidget, self).__init__()
 
-        self.parent = parent
-        getStr = self.parent.stringBundle.getString
+        self.p = parent
 
         self.spinbox = QtWidgets.QSpinBox()
         self.spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
@@ -27,24 +26,32 @@ class ZoomWidget:
         self.spinbox.setAlignment(QtCore.Qt.AlignCenter)
         self.spinbox.setEnabled(False)
 
-        zoom = QtWidgets.QWidgetAction(parent)
+        zoom = QtWidgets.QWidgetAction(self.p)
         zoom.setDefaultWidget(self.spinbox)
         zoomIn = newAction(
-            parent, getStr('zoomIn'), partial(self.addZoom, 10),
-            'Ctrl++', 'zoom-in', getStr('zoomInDetail'), enabled=False)
+            self.p, 'Zoom In', partial(self.addZoom, 10),
+            'Ctrl++', 'zoom-in',
+            'Increase zoom level',
+            enabled=False)
         zoomOut = newAction(
-            parent, getStr('zoomOut'), partial(self.addZoom, -10),
-            'Ctrl+-', 'zoom-out', getStr('zoomOutDetail'), enabled=False)
+            self.p, 'Zoom Out', partial(self.addZoom, -10),
+            'Ctrl+-', 'zoom-out',
+            'Decrease zoom level',
+            enabled=False)
         zoomOrg = newAction(
-            parent, getStr('zoomOrgSize'), partial(self.setZoom, 100),
-            'Ctrl+=', 'zoom', getStr('zoomOrgSizeDetail'), enabled=False)
+            self.p, 'Original size', partial(self.setZoom, 100),
+            'Ctrl+=', 'zoom',
+            'Zoom to original size',
+            enabled=False)
         zoomFitWindow = newAction(
-            parent, getStr('zoomFitWindow'), self.setFitWindow,
-            'Ctrl+F', 'fit-window', getStr('zoomFitWindowDetail'),
+            self.p, 'Fit Window', self.setFitWindow,
+            'Ctrl+F', 'fit-window',
+            'Zoom follows window size',
             checkable=True, enabled=False)
         zoomFitWidth = newAction(
-            parent, getStr('zoomFitWidth'), self.setFitWidth,
-            'Ctrl+Shift+F', 'fit-width', getStr('zoomFitWidthDetail'),
+            self.p, 'Fit Width', self.setFitWidth,
+            'Ctrl+Shift+F', 'fit-width',
+            'Zoom follows window width',
             checkable=True, enabled=False)
 
         self.actions = struct(
@@ -60,6 +67,8 @@ class ZoomWidget:
             self.ZOOM_MANUAL: lambda: 1,
             self.ZOOM_FIT_WINDOW: self.scaleFitWindow,
             self.ZOOM_FIT_WIDTH: self.scaleFitWidth}
+
+        self.spinbox.valueChanged.connect(self.p.paintCanvas)
 
     def minimumSizeHint(self):
         height = self.spinbox.minimumSizeHint().height()
@@ -95,25 +104,25 @@ class ZoomWidget:
     def scaleFitWindow(self):
         """Figure out the size of the pixmap in order to fit the main widget."""
         e = 2.0  # So that no scrollbars are generated.
-        w1 = self.parent.centralWidget().width() - e
-        h1 = self.parent.centralWidget().height() - e
+        w1 = self.p.centralWidget().width() - e
+        h1 = self.p.centralWidget().height() - e
         a1 = w1 / h1
         # Calculate a new scale value based on the pixmap's aspect ratio.
-        w2 = self.parent.canvas.pixmap.width() - 0.0
-        h2 = self.parent.canvas.pixmap.height() - 0.0
+        w2 = self.p.canvas.pixmap.width() - 0.0
+        h2 = self.p.canvas.pixmap.height() - 0.0
         a2 = w2 / h2
         return w1 / w2 if a2 >= a1 else h1 / h2
 
     def scaleFitWidth(self):
         # The epsilon does not seem to work too well here.
-        w = self.parent.centralWidget().width() - 2.0
-        return w / self.parent.canvas.pixmap.width()
+        w = self.p.centralWidget().width() - 2.0
+        return w / self.p.canvas.pixmap.width()
 
     def zoomRequest(self, delta):
         # get the current scrollbar positions
         # calculate the percentages ~ coordinates
-        h_bar = self.parent.scrollWidget.scrollBars[QtCore.Qt.Horizontal]
-        v_bar = self.parent.scrollWidget.scrollBars[QtCore.Qt.Vertical]
+        h_bar = self.p.scrollWidget.scrollBars[QtCore.Qt.Horizontal]
+        v_bar = self.p.scrollWidget.scrollBars[QtCore.Qt.Vertical]
         # get the current maximum, to know the difference after zooming
         h_bar_max = h_bar.maximum()
         v_bar_max = v_bar.maximum()
@@ -124,11 +133,11 @@ class ZoomWidget:
         # up and down analogous
         cursor = QtGui.QCursor()
         pos = cursor.pos()
-        relative_pos = QtWidgets.QWidget.mapFromGlobal(self.parent, pos)
+        relative_pos = QtWidgets.QWidget.mapFromGlobal(self.p, pos)
         cursor_x = relative_pos.x()
         cursor_y = relative_pos.y()
-        w = self.parent.scrollWidget.width()
-        h = self.parent.scrollWidget.height()
+        w = self.p.scrollWidget.width()
+        h = self.p.scrollWidget.height()
         # the scaling from 0 to 1 has some padding
         # you don't have to hit the very leftmost pixel for a maximum-left movement
         margin = 0.1
