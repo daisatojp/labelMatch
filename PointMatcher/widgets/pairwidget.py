@@ -1,22 +1,30 @@
-from PyQt5 import QtGui
-from PyQt5 import QtCore
-from PyQt5 import QtWidgets
+from PyQt5.QtGui import QBrush
+from PyQt5.QtGui import QColor
+from PyQt5.QtWidgets import QDockWidget
+from PyQt5.QtWidgets import QListWidget
+from PyQt5.QtWidgets import QVBoxLayout
+from PyQt5.QtWidgets import QWidget
 
 
-class PairWidget(QtWidgets.QDockWidget):
+class PairWidget(QDockWidget):
 
-    def __init__(self, parent=None, title=''):
+    ITEM_COLOR_OK = QBrush(QColor(255, 255, 255))
+    ITEM_COLOR_NG = QBrush(QColor(255, 255, 0))
+
+    def __init__(self, parent, title=''):
         super(PairWidget, self).__init__(title, parent)
 
-        self.pairListWidget = QtWidgets.QListWidget()
-        self.pairlistLayout = QtWidgets.QVBoxLayout()
+        self.p = parent
+
+        self.pairListWidget = QListWidget()
+        self.pairlistLayout = QVBoxLayout()
         self.pairlistLayout.setContentsMargins(0, 0, 0, 0)
         self.pairlistLayout.addWidget(self.pairListWidget)
-        self.pairListContainer = QtWidgets.QWidget()
+        self.pairListContainer = QWidget()
         self.pairListContainer.setLayout(self.pairlistLayout)
         self.setObjectName('Pair')
         self.setWidget(self.pairListContainer)
-        self.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable)
+        self.setFeatures(QDockWidget.DockWidgetFloatable)
 
     def itemClicked_connect(self, f):
         self.pairListWidget.itemClicked.connect(f)
@@ -55,6 +63,16 @@ class PairWidget(QtWidgets.QDockWidget):
                 self.pairListWidget.item(i).setText(self.item_text(pairs[i]))
         else:
             self.pairListWidget.item(idx).setText(self.item_text(pairs[idx]))
+
+    def apply_bad_keypoints(self, bad_keypoints):
+        views = self.p.matching.get_views()
+        pairs = self.p.matching.get_pairs()
+        bad_view_ids = [views[x[0]]['id_view'] for x in bad_keypoints]
+        for idx in range(len(pairs)):
+            if (pairs[idx]['id_view_i'] in bad_view_ids) or (pairs[idx]['id_view_j'] in bad_view_ids):
+                self.pairListWidget.item(idx).setBackground(self.ITEM_COLOR_NG)
+            else:
+                self.pairListWidget.item(idx).setBackground(self.ITEM_COLOR_OK)
 
     @staticmethod
     def item_text(pair):
