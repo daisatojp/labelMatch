@@ -11,11 +11,11 @@ class ZoomWidget:
     ZOOM_FIT_WINDOW = 2
     ZOOM_FIT_WIDTH = 3
 
-    def __init__(self, parent, stringBundle, value=100):
+    def __init__(self, parent, value=100):
         super(ZoomWidget, self).__init__()
 
         self.parent = parent
-        getStr = stringBundle.getString
+        getStr = self.parent.stringBundle.getString
 
         self.spinbox = QtWidgets.QSpinBox()
         self.spinbox.setButtonSymbols(QtWidgets.QAbstractSpinBox.NoButtons)
@@ -112,8 +112,8 @@ class ZoomWidget:
     def zoomRequest(self, delta):
         # get the current scrollbar positions
         # calculate the percentages ~ coordinates
-        h_bar = self.parent.scrollBars[QtCore.Qt.Horizontal]
-        v_bar = self.parent.scrollBars[QtCore.Qt.Vertical]
+        h_bar = self.parent.scrollWidget.scrollBars[QtCore.Qt.Horizontal]
+        v_bar = self.parent.scrollWidget.scrollBars[QtCore.Qt.Vertical]
         # get the current maximum, to know the difference after zooming
         h_bar_max = h_bar.maximum()
         v_bar_max = v_bar.maximum()
@@ -127,8 +127,8 @@ class ZoomWidget:
         relative_pos = QtWidgets.QWidget.mapFromGlobal(self.parent, pos)
         cursor_x = relative_pos.x()
         cursor_y = relative_pos.y()
-        w = self.parent.scrollArea.width()
-        h = self.parent.scrollArea.height()
+        w = self.parent.scrollWidget.width()
+        h = self.parent.scrollWidget.height()
         # the scaling from 0 to 1 has some padding
         # you don't have to hit the very leftmost pixel for a maximum-left movement
         margin = 0.1

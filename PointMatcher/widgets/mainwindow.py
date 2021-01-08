@@ -12,6 +12,7 @@ from PointMatcher.widgets.settings import Settings
 from PointMatcher.widgets.stringbundle import StringBundle
 from PointMatcher.widgets.canvas import Canvas
 from PointMatcher.widgets.zoomwidget import ZoomWidget
+from PointMatcher.widgets.scrollwidget import ScrollWidget
 from PointMatcher.widgets.newfiledialog import NewFileDialog
 from PointMatcher.widgets.toolbar import ToolBar
 from PointMatcher.utils.filesystem import icon_path, string_path, scan_all_images
@@ -62,20 +63,13 @@ class MainWindow(QMainWindow, WindowMixin):
         self.pairWidget = PairWidget(parent=self, title=getStr('pairList'))
         self.pairWidget.itemClicked_connect(self.pairitemClicked)
 
-        self.zoomWidget = ZoomWidget(self, self.stringBundle)
-
         self.canvas = Canvas(parent=self)
+        self.zoomWidget = ZoomWidget(self)
+        self.scrollWidget = ScrollWidget(self)
         self.canvas.zoomRequest.connect(self.zoomWidget.zoomRequest)
+        self.canvas.scrollRequest.connect(self.scrollWidget.scrollRequest)
 
-        self.scrollArea = QScrollArea()
-        self.scrollArea.setWidget(self.canvas)
-        self.scrollArea.setWidgetResizable(True)
-        self.scrollBars = {
-            Qt.Vertical: self.scrollArea.verticalScrollBar(),
-            Qt.Horizontal: self.scrollArea.horizontalScrollBar()}
-        self.canvas.scrollRequest.connect(self.scrollRequest)
-
-        self.setCentralWidget(self.scrollArea)
+        self.setCentralWidget(self.scrollWidget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.pairWidget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.viewIWidget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.viewJWidget)
@@ -262,11 +256,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.viewJWidget.set_current_idx(self.matching.get_view_idx_j())
         self.canvas.updatePixmap()
         self.canvas.repaint()
-
-    def scrollRequest(self, delta, orientation):
-        units = - delta / (8 * 15)
-        bar = self.scrollBars[orientation]
-        bar.setValue(bar.value() + bar.singleStep() * units)
 
     def loadMatching(self, data):
         self.matching = Matching(data, self.imageDir)
