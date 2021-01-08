@@ -42,7 +42,6 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def __init__(self):
         super(MainWindow, self).__init__()
-        self.setWindowTitle(__appname__)
 
         self.matching = None
         self.imageDir = None
@@ -135,7 +134,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.resize(size)
         self.move(position)
 
-        # Display cursor coordinates at the right of status bar
+        self.updateTitle()
         self.labelCoordinates = QLabel('')
         self.statusBar().addPermanentWidget(self.labelCoordinates)
 
@@ -223,20 +222,25 @@ class MainWindow(QMainWindow, WindowMixin):
     def getMatchingDirtyEvent(self):
         self.actions.saveFile.setEnabled(True)
 
+    def updateTitle(self):
+        if self.savePath is None:
+            self.setWindowTitle(__appname__)
+        else:
+            self.setWindowTitle('{} [{}]'.format(__appname__, self.savePath))
+
     def mayContinue(self):
+        Yes = QMessageBox.Yes
+        No = QMessageBox.No
+        Cancel = QMessageBox.Cancel
+        msg = 'You have unsaved changes, would you like to save them and proceed?'
         if self.matching is not None:
             if self.matching.dirty():
-                saveChanges = self.saveChangesDialog()
-                if saveChanges == QMessageBox.Yes:
+                saveChanges = QMessageBox.warning(self, 'Attention', msg, Yes | No | Cancel)
+                if saveChanges == Yes:
                     self.matching.save(self.savePath)
                     return True
-                elif saveChanges == QMessageBox.No:
+                elif saveChanges == No:
                     return True
                 else:
                     return False
         return True
-
-    def saveChangesDialog(self):
-        yes, no, cancel = QMessageBox.Yes, QMessageBox.No, QMessageBox.Cancel
-        msg = u'You have unsaved changes, would you like to save them and proceed?'
-        return QMessageBox.warning(self, u'Attention', msg, yes | no | cancel)

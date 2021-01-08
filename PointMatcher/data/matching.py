@@ -3,7 +3,6 @@ import os.path as osp
 import json
 import pickle
 import cv2
-from PyQt5.QtGui import *
 
 
 class Matching:
@@ -12,6 +11,8 @@ class Matching:
 
         if type(data) is dict:
             self.data = data
+        elif type(data) is Matching:
+            self.data = data.data.copy()
         elif type(data) is str:
             ext = osp.splitext(data)[1]
             if ext == '.json':

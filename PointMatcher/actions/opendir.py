@@ -24,6 +24,9 @@ class OpenDirAction(QAction):
             defaultDir = self.p.imageDir
         else:
             defaultDir = '.'
-        self.p.imageDir = QFileDialog.getExistingDirectory(
+        imageDir = QFileDialog.getExistingDirectory(
             self.p, '{} - Open Directory'.format(__appname__), defaultDir,
             QFD.ShowDirsOnly | QFD.DontResolveSymlinks)
+        if osp.isdir(imageDir):
+            self.p.imageDir = imageDir
+            self.p.actions.openFile.setEnabled(True)
