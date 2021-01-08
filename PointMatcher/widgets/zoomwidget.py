@@ -27,6 +27,8 @@ class ZoomWidget:
         self.spinbox.setAlignment(QtCore.Qt.AlignCenter)
         self.spinbox.setEnabled(False)
 
+        zoom = QtWidgets.QWidgetAction(parent)
+        zoom.setDefaultWidget(self.spinbox)
         zoomIn = newAction(
             parent, getStr('zoomIn'), partial(self.addZoom, 10),
             'Ctrl++', 'zoom-in', getStr('zoomInDetail'), enabled=False)
@@ -46,6 +48,7 @@ class ZoomWidget:
             checkable=True, enabled=False)
 
         self.actions = struct(
+            zoom=zoom,
             zoomIn=zoomIn,
             zoomOut=zoomOut,
             zoomOrg=zoomOrg,

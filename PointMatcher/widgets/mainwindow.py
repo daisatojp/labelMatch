@@ -63,9 +63,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.pairWidget.itemClicked_connect(self.pairitemClicked)
 
         self.zoomWidget = ZoomWidget(self, self.stringBundle)
-        za = self.zoomWidget.actions
-        zoom = QWidgetAction(self)
-        zoom.setDefaultWidget(self.zoomWidget.spinbox)
 
         self.canvas = Canvas(parent=self)
         self.canvas.zoomRequest.connect(self.zoomWidget.zoomRequest)
@@ -174,6 +171,7 @@ class MainWindow(QMainWindow, WindowMixin):
             help=self.menu('&Help'))
 
         # setup menus
+        za = self.zoomWidget.actions
         addActions(
             self.menus.file,
             (openDir, newFile, openFile, saveFile, saveFileAs, closeFile, quitApp))
@@ -196,13 +194,10 @@ class MainWindow(QMainWindow, WindowMixin):
             self.tools,
             (openDir, openFile, saveFile, saveFileAs,
              None, addPair, removePair, openNextPair, openPrevPair,
-             None, za.zoomIn, zoom, za.zoomOut, za.zoomFitWindow, za.zoomFitWidth))
+             None, za.zoomIn, za.zoom, za.zoomOut, za.zoomFitWindow, za.zoomFitWidth))
 
         self.statusBar().showMessage('{} started.'.format(__appname__))
         self.statusBar().show()
-
-        self.zoom_level = 100
-        self.fit_window = False
 
         size = QSize(600, 500)
         position = QPoint(0, 0)
