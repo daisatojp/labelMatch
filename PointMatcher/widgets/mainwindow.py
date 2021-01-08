@@ -6,6 +6,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PointMatcher.__init__ import __appname__, __version__
 from PointMatcher.data.matching import Matching
+from PointMatcher.actions import OpenDirAction
 from PointMatcher.widgets.viewwidget import ViewWidget
 from PointMatcher.widgets.pairwidget import PairWidget
 from PointMatcher.widgets.settings import Settings
@@ -75,9 +76,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.addDockWidget(Qt.RightDockWidgetArea, self.viewJWidget)
 
         # File menu
-        openDir = newAction(
-            self, getStr('openDir'), self.openDir,
-            'Ctrl+u', 'open', getStr('openDirDetail'))
+        openDir = OpenDirAction(self)
         newFile = newAction(
             self, getStr('newFile'), self.newFile,
             'Ctrl+N', 'open', getStr('newFileDetail'))
@@ -211,11 +210,22 @@ class MainWindow(QMainWindow, WindowMixin):
         self.labelCoordinates = QLabel('')
         self.statusBar().addPermanentWidget(self.labelCoordinates)
 
-    def keyReleaseEvent(self, ev):
-        pass
-
-    def keyPressEvent(self, ev):
-        pass
+    def loadMatching(self, data):
+        self.matching = Matching(data, self.imageDir)
+        self.matching.set_update_callback(self.getMatchingUpdateEvent)
+        self.matching.set_dirty_callback(self.getMatchingDirtyEvent)
+        self.canvas.setMatching(self.matching)
+        self.viewIWidget.initialize_item(self.matching)
+        self.viewJWidget.initialize_item(self.matching)
+        self.pairWidget.initialize_item(self.matching)
+        if 0 < len(self.matching.get_pairs()):
+            view_id_i = self.matching.get_pairs()[0]['id_view_i']
+            view_id_j = self.matching.get_pairs()[0]['id_view_j']
+        else:
+            view_id_i = self.matching.get_views()[0]['id_view']
+            view_id_j = self.matching.get_views()[1]['id_view']
+        self.changePair(view_id_i, view_id_j)
+        self.actions.saveFileAs.setEnabled(True)
 
     def viewIitemClicked(self, item=None):
         view_id_i = self.matching.get_view_id_by_view_idx(self.viewIWidget.get_current_idx())
@@ -257,23 +267,6 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.updatePixmap()
         self.canvas.repaint()
 
-    def loadMatching(self, data):
-        self.matching = Matching(data, self.imageDir)
-        self.matching.set_update_callback(self.getMatchingUpdateEvent)
-        self.matching.set_dirty_callback(self.getMatchingDirtyEvent)
-        self.canvas.setMatching(self.matching)
-        self.viewIWidget.initialize_item(self.matching)
-        self.viewJWidget.initialize_item(self.matching)
-        self.pairWidget.initialize_item(self.matching)
-        if 0 < len(self.matching.get_pairs()):
-            view_id_i = self.matching.get_pairs()[0]['id_view_i']
-            view_id_j = self.matching.get_pairs()[0]['id_view_j']
-        else:
-            view_id_i = self.matching.get_views()[0]['id_view']
-            view_id_j = self.matching.get_views()[1]['id_view']
-        self.changePair(view_id_i, view_id_j)
-        self.actions.saveFileAs.setEnabled(True)
-
     def resizeEvent(self, event):
         super(MainWindow, self).resizeEvent(event)
 
@@ -286,15 +279,6 @@ class MainWindow(QMainWindow, WindowMixin):
         # if not self.mayContinue():
         #     event.ignore()
         self.settings.save()
-
-    def openDir(self, _value=False):
-        if self.imageDir and os.path.exists(self.imageDir):
-            defaultDir = self.imageDir
-        else:
-            defaultDir = '.'
-        self.imageDir = QFileDialog.getExistingDirectory(
-            self, '{} - Open Directory'.format(__appname__), defaultDir,
-            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
 
     def newFile(self, _value=False):
         if not self.mayContinue():
