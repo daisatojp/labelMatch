@@ -1,6 +1,7 @@
 import os
 import os.path as osp
 from functools import partial
+import threading
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -85,7 +86,7 @@ class MainWindow(QMainWindow, WindowMixin):
             sanityCheck=SanityCheckAction(self),
             complementMatch=ComplementMatchAction(self),
             autoSaving=AutoSavingAction(self),
-            showInfo = ShowInfoAction(self))
+            showInfo=ShowInfoAction(self))
 
         self.menus = struct(
             file=self.menu('&File'),
@@ -154,6 +155,7 @@ class MainWindow(QMainWindow, WindowMixin):
             view_id_j = self.matching.get_views()[1]['id_view']
         self.changePair(view_id_i, view_id_j)
         self.actions.saveFileAs.setEnabled(True)
+        self.actions.sanityCheck.requireSanityCheck()
 
     def viewIitemClicked(self, item=None):
         view_id_i = self.matching.get_view_id_by_view_idx(self.viewIWidget.get_current_idx())
@@ -207,6 +209,7 @@ class MainWindow(QMainWindow, WindowMixin):
         # if not self.mayContinue():
         #     event.ignore()
         self.settings.save()
+        self.actions.sanityCheck.terminate_thread()
 
     def getMatchingUpdateEvent(self):
         view_id_i = self.matching.get_view_id_i()
@@ -218,6 +221,7 @@ class MainWindow(QMainWindow, WindowMixin):
         pair_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
         if pair_idx is not None:
             self.pairWidget.update_item_by_idx(self.matching, pair_idx)
+        self.actions.sanityCheck.requireSanityCheck()
 
     def getMatchingDirtyEvent(self):
         self.actions.saveFile.setEnabled(True)

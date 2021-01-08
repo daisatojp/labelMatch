@@ -34,10 +34,15 @@ class MatchingPainter:
         self._bad_keypoints = None
 
     def paint(self, painter, matching, scale):
-        if self._bad_keypoints is None:
-            self.set_bad_keypoints([], matching)
+        bad_keypoints_for_view_i = []
+        bad_keypoints_for_view_j = []
         view_idx_i = matching.get_view_idx_i()
         view_idx_j = matching.get_view_idx_j()
+        if self._bad_keypoints is not None:
+            if view_idx_i in self._bad_keypoints:
+                bad_keypoints_for_view_i = self._bad_keypoints[view_idx_i]
+            if view_idx_j in self._bad_keypoints:
+                bad_keypoints_for_view_j = self._bad_keypoints[view_idx_j]
         pen = QPen(self.keypoint_ok_fill_color)
         pen.setWidth(max(1, int(round(2.0 / scale))))
         painter.setPen(pen)
@@ -52,12 +57,12 @@ class MatchingPainter:
             if idx == matching.selected_idx_i:
                 painter.fillPath(point_path, self.keypoint_selected_fill_color)
             elif idx == matching.highlighted_idx_i:
-                if idx in self._bad_keypoints[view_idx_i]:
+                if idx in bad_keypoints_for_view_i:
                     painter.fillPath(point_path, self.keypoint_ng_highlighted_fill_color)
                 else:
                     painter.fillPath(point_path, self.keypoint_ok_highlighted_fill_color)
             else:
-                if idx in self._bad_keypoints[view_idx_i]:
+                if idx in bad_keypoints_for_view_i:
                     painter.fillPath(point_path, self.keypoint_ng_fill_color)
                 else:
                     painter.fillPath(point_path, self.keypoint_ok_fill_color)
@@ -72,12 +77,12 @@ class MatchingPainter:
             if idx == matching.selected_idx_j:
                 painter.fillPath(point_path, self.keypoint_selected_fill_color)
             elif idx == matching.highlighted_idx_j:
-                if idx in self._bad_keypoints[view_idx_j]:
+                if idx in bad_keypoints_for_view_j:
                     painter.fillPath(point_path, self.keypoint_ng_highlighted_fill_color)
                 else:
                     painter.fillPath(point_path, self.keypoint_ok_highlighted_fill_color)
             else:
-                if idx in self._bad_keypoints[view_idx_j]:
+                if idx in bad_keypoints_for_view_j:
                     painter.fillPath(point_path, self.keypoint_ng_fill_color)
                 else:
                     painter.fillPath(point_path, self.keypoint_ok_fill_color)

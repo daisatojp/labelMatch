@@ -58,6 +58,7 @@ class ViewWidget(QDockWidget):
                 self.viewListWidget.item(idx).setBackground(self.ITEM_COLOR_NG)
             else:
                 self.viewListWidget.item(idx).setBackground(self.ITEM_COLOR_OK)
+        self.update()
 
     @staticmethod
     def item_text(view):

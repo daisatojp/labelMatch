@@ -12,10 +12,12 @@ class PairWidget(QDockWidget):
     ITEM_COLOR_NG = QBrush(QColor(255, 255, 0))
 
     def __init__(self, parent, title=''):
-        super(PairWidget, self).__init__(title, parent)
-
+        super(PairWidget, self).__init__(parent)
         self.p = parent
+        self.title = title
+        self.errorNum = 0
 
+        self.updateTitle()
         self.pairListWidget = QListWidget()
         self.pairlistLayout = QVBoxLayout()
         self.pairlistLayout.setContentsMargins(0, 0, 0, 0)
@@ -64,15 +66,25 @@ class PairWidget(QDockWidget):
         else:
             self.pairListWidget.item(idx).setText(self.item_text(pairs[idx]))
 
-    def apply_bad_keypoints(self, bad_keypoints):
-        views = self.p.matching.get_views()
-        pairs = self.p.matching.get_pairs()
+    def updateTitle(self):
+        if self.errorNum == 0:
+            self.setWindowTitle(self.title)
+        else:
+            self.setWindowTitle('{} (ErrorNum={})'.format(self.title, self.errorNum))
+
+    def apply_bad_keypoints(self, bad_keypoints, matching):
+        views = matching.get_views()
+        pairs = matching.get_pairs()
         bad_view_ids = [views[x[0]]['id_view'] for x in bad_keypoints]
-        for idx in range(len(pairs)):
+        self.errorNum = 0
+        for idx in range(self.count()):
             if (pairs[idx]['id_view_i'] in bad_view_ids) or (pairs[idx]['id_view_j'] in bad_view_ids):
                 self.pairListWidget.item(idx).setBackground(self.ITEM_COLOR_NG)
+                self.errorNum += 1
             else:
                 self.pairListWidget.item(idx).setBackground(self.ITEM_COLOR_OK)
+        self.update()
+        self.updateTitle()
 
     @staticmethod
     def item_text(pair):

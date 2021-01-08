@@ -272,6 +272,10 @@ class Matching:
         self.selected_idx_i = None
         self.selected_idx_j = None
 
+    def copy(self):
+        m = Matching(self.data.copy())
+        return m
+
     def save(self, file_path):
         ext = osp.splitext(file_path)[1]
         if ext == '.json':
