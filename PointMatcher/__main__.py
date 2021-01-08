@@ -7,7 +7,7 @@ from PyQt5.QtWidgets import *
 
 from PointMatcher.__init__ import __appname__
 from PointMatcher.widgets.mainwindow import MainWindow
-from PointMatcher.widgets.utils import icon_path
+from PointMatcher.utils.filesystem import icon_path
 
 
 def main():
@@ -16,7 +16,7 @@ def main():
 
     app = QApplication([])
     app.setApplicationName(__appname__)
-    app.setWindowIcon(QIcon(icon_path('app.png')))
+    app.setWindowIcon(QIcon(icon_path('app')))
     win = MainWindow()
     win.show()
     return app.exec_()

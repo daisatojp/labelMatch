@@ -13,7 +13,9 @@ from PointMatcher.widgets.canvas import Canvas
 from PointMatcher.widgets.zoomwidget import ZoomWidget
 from PointMatcher.widgets.newfiledialog import NewFileDialog
 from PointMatcher.widgets.toolbar import ToolBar
-from PointMatcher.widgets.utils import newAction, addActions, fmtShortcut, struct, icon_path, string_path
+from PointMatcher.utils.filesystem import icon_path, string_path, scan_all_images
+from PointMatcher.utils.struct import struct
+from PointMatcher.utils.qt import newAction, addActions
 
 
 class WindowMixin(object):
@@ -338,7 +340,7 @@ class MainWindow(QMainWindow, WindowMixin):
             return
         self.imageDir, self.savePath = ret
         x = {'views': [], 'pairs': []}
-        image_paths = self._scan_all_images(self.imageDir)
+        image_paths = scan_all_images(self.imageDir)
         for i in range(len(image_paths)):
             for j in range(i + 1, len(image_paths)):
                 x['pairs'].append({'id_view_i': i, 'id_view_j': j, 'matches': []})
@@ -489,16 +491,3 @@ class MainWindow(QMainWindow, WindowMixin):
         yes, no, cancel = QMessageBox.Yes, QMessageBox.No, QMessageBox.Cancel
         msg = u'You have unsaved changes, would you like to save them and proceed?'
         return QMessageBox.warning(self, u'Attention', msg, yes | no | cancel)
-
-    @staticmethod
-    def _scan_all_images(root_dir):
-        extensions = ['.jpg', '.JPG']
-        image_paths = []
-        for root, dirs, files in os.walk(root_dir):
-            for file in files:
-                if file.lower().endswith(tuple(extensions)):
-                    relativePath = os.path.join(root, file)
-                    path = os.path.abspath(relativePath)
-                    image_paths.append(path)
-        natural_sort(image_paths, key=lambda x: x.lower())
-        return image_paths

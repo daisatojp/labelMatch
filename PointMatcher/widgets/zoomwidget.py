@@ -2,7 +2,8 @@ from functools import partial
 from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
-from PointMatcher.widgets.utils import struct, newAction
+from PointMatcher.utils.struct import struct
+from PointMatcher.utils.qt import newAction
 
 
 class ZoomWidget:
