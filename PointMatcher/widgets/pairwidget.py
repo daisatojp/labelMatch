@@ -48,6 +48,14 @@ class PairWidget(QtWidgets.QDockWidget):
     def remove_last_item(self):
         self.remove_item_by_idx(self.count() - 1)
 
+    def update_item_by_idx(self, matching, idx):
+        pairs = matching.get_pairs()
+        if type(idx) in (list, tuple):
+            for i in idx:
+                self.pairListWidget.item(i).setText(self.item_text(pairs[i]))
+        else:
+            self.pairListWidget.item(idx).setText(self.item_text(pairs[idx]))
+
     @staticmethod
     def item_text(pair):
         return '[({}, {}) [M={}]'.format(

@@ -3,6 +3,7 @@ from PyQt5 import QtGui
 from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 from PointMatcher.utils.filesystem import icon_path
+from PointMatcher.data.op import sanity_check
 
 
 class SanityCheckAction(QtWidgets.QAction):
@@ -15,4 +16,5 @@ class SanityCheckAction(QtWidgets.QAction):
         self.setEnabled(True)
 
     def sanityCheck(self):
-        pass
+        x = sanity_check(self.p.matching)
+        return x

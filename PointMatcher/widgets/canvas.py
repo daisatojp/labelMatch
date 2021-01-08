@@ -4,6 +4,8 @@ import numpy as np
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
+from PointMatcher.data.painter import MatchingPainter
+
 
 CURSOR_DEFAULT = Qt.ArrowCursor
 CURSOR_POINT = Qt.PointingHandCursor
@@ -33,6 +35,7 @@ class Canvas(QWidget):
         self.pixmap = QPixmap()
         self._painter = QPainter()
         self._cursor = CURSOR_DEFAULT
+        self.mp = MatchingPainter()
 
         # set widget options
         self.setMouseTracking(True)
@@ -241,10 +244,10 @@ class Canvas(QWidget):
         img[self.img_i_h:, :self.img_j_w, :] = img_j
         qimg = QImage(img.flatten(), img_w, img_h, QImage.Format_BGR888)
         self.pixmap = QPixmap.fromImage(qimg)
-        self.matching.draw_offset_i_x = 0
-        self.matching.draw_offset_i_y = 0
-        self.matching.draw_offset_j_x = 0
-        self.matching.draw_offset_j_y = self.img_i_h
+        self.mp.draw_offset_i_x = 0
+        self.mp.draw_offset_i_y = 0
+        self.mp.draw_offset_j_x = 0
+        self.mp.draw_offset_j_y = self.img_i_h
 
     def paintEvent(self, event):
         if not self.pixmap:
@@ -262,7 +265,7 @@ class Canvas(QWidget):
         p.drawPixmap(0, 0, self.pixmap)
 
         if self.matching:
-            self.matching.paint(p, self.scale)
+            self.mp.paint(p, self.matching, self.scale)
 
         self.setAutoFillBackground(True)
         pal = self.palette()

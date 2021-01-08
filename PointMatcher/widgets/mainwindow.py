@@ -218,7 +218,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.viewJWidget.update_item_by_idx(self.matching, [view_idx_i, view_idx_j])
         pair_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
         if pair_idx is not None:
-            self.pairListWidget.item(pair_idx).setText(self.getPairItemText(view_id_i, view_id_j))
+            self.pairWidget.update_item_by_idx(self.matching, pair_idx)
 
     def getMatchingDirtyEvent(self):
         self.actions.saveFile.setEnabled(True)
