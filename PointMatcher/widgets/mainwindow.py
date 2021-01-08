@@ -36,7 +36,6 @@ class WindowMixin(object):
 
 
 class MainWindow(QMainWindow, WindowMixin):
-    FIT_WINDOW, FIT_WIDTH, MANUAL_ZOOM = list(range(3))
 
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -76,19 +75,23 @@ class MainWindow(QMainWindow, WindowMixin):
         self.pairdock.setObjectName(getStr('pairs'))
         self.pairdock.setWidget(pairListContainer)
 
-        self.canvas = Canvas(parent=self)
-        self.canvas.zoomRequest.connect(self.zoomRequest)
+        self.zoomWidget = ZoomWidget(self, self.stringBundle)
+        za = self.zoomWidget.actions
+        zoom = QWidgetAction(self)
+        zoom.setDefaultWidget(self.zoomWidget.spinbox)
 
-        scroll = QScrollArea()
-        scroll.setWidget(self.canvas)
-        scroll.setWidgetResizable(True)
+        self.canvas = Canvas(parent=self)
+        self.canvas.zoomRequest.connect(self.zoomWidget.zoomRequest)
+
+        self.scrollArea = QScrollArea()
+        self.scrollArea.setWidget(self.canvas)
+        self.scrollArea.setWidgetResizable(True)
         self.scrollBars = {
-            Qt.Vertical: scroll.verticalScrollBar(),
-            Qt.Horizontal: scroll.horizontalScrollBar()}
-        self.scrollArea = scroll
+            Qt.Vertical: self.scrollArea.verticalScrollBar(),
+            Qt.Horizontal: self.scrollArea.horizontalScrollBar()}
         self.canvas.scrollRequest.connect(self.scrollRequest)
 
-        self.setCentralWidget(scroll)
+        self.setCentralWidget(self.scrollArea)
         self.addDockWidget(Qt.RightDockWidgetArea, self.pairdock)
         self.addDockWidget(Qt.RightDockWidgetArea, self.viewIdock)
         self.addDockWidget(Qt.RightDockWidgetArea, self.viewJdock)
@@ -128,23 +131,6 @@ class MainWindow(QMainWindow, WindowMixin):
         autoSaving = QAction(getStr('autoSaveMode'), self)
         autoSaving.setCheckable(True)
         autoSaving.setChecked(False)
-        zoomIn = newAction(
-            self, getStr('zoomIn'), partial(self.addZoom, 10),
-            'Ctrl++', 'zoom-in', getStr('zoomInDetail'), enabled=False)
-        zoomOut = newAction(
-            self, getStr('zoomOut'), partial(self.addZoom, -10),
-            'Ctrl+-', 'zoom-out', getStr('zoomOutDetail'), enabled=False)
-        zoomOrg = newAction(
-            self, getStr('zoomOrgSize'), partial(self.setZoom, 100),
-            'Ctrl+=', 'zoom', getStr('zoomOrgSizeDetail'), enabled=False)
-        fitWindow = newAction(
-            self, getStr('fitWindow'), self.setFitWindow,
-            'Ctrl+F', 'fit-window', getStr('fitWindowDetail'),
-            checkable=True, enabled=False)
-        fitWidth = newAction(
-            self, getStr('fitWidth'), self.setFitWidth,
-            'Ctrl+Shift+F', 'fit-width', getStr('fitWidthDetail'),
-            checkable=True, enabled=False)
 
         # Edit menu
         addPair = newAction(
@@ -177,20 +163,6 @@ class MainWindow(QMainWindow, WindowMixin):
             self, getStr('showInfo'), self.showInfoDialog,
             None, 'help', getStr('showInfoDetail'))
 
-        self.zoomWidget = ZoomWidget()
-        zoom = QWidgetAction(self)
-        zoom.setDefaultWidget(self.zoomWidget)
-        self.zoomWidget.setWhatsThis(
-            'Zoom in or out of the image. Also accessible with {} and {} from the canvas.'.format(
-                fmtShortcut('Ctrl+[-+]'), fmtShortcut('Ctrl+Wheel')))
-        self.zoomWidget.setEnabled(False)
-        self.zoomMode = self.MANUAL_ZOOM
-        self.scalers = {
-            self.FIT_WINDOW: self.scaleFitWindow,
-            self.FIT_WIDTH: self.scaleFitWidth,
-            # Set to one to scale to 100% when loading files.
-            self.MANUAL_ZOOM: lambda: 1}
-
         self.newFileDialog = NewFileDialog(self)
 
         self.actions = struct(
@@ -208,13 +180,7 @@ class MainWindow(QMainWindow, WindowMixin):
             editMatchMode=editMatchMode,
             sanityCheck=sanityCheck,
             complementMatch=complementMatch,
-            autoSaving=autoSaving,
-            zoom=zoom,
-            zoomIn=zoomIn,
-            zoomOut=zoomOut,
-            zoomOrg=zoomOrg,
-            fitWindow=fitWindow,
-            fitWidth=fitWidth)
+            autoSaving=autoSaving)
 
         self.menus = struct(
             file=self.menu('&File'),
@@ -234,8 +200,7 @@ class MainWindow(QMainWindow, WindowMixin):
         addActions(
             self.menus.view,
             (autoSaving,
-             None, zoomIn, zoomOut, zoomOrg,
-             None, fitWindow, fitWidth))
+             None, za.zoomIn, za.zoomOut, za.zoomOrg, za.zoomFitWindow, za.zoomFitWidth))
         addActions(
             self.menus.help,
             (showInfo,))
@@ -246,7 +211,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.tools,
             (openDir, openFile, saveFile, saveFileAs,
              None, addPair, removePair, openNextPair, openPrevPair,
-             None, zoomIn, zoom, zoomOut, fitWindow, fitWidth))
+             None, za.zoomIn, zoom, za.zoomOut, za.zoomFitWindow, za.zoomFitWidth))
 
         self.statusBar().showMessage('{} started.'.format(__appname__))
         self.statusBar().show()
@@ -266,7 +231,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.move(position)
 
         # Callbacks:
-        self.zoomWidget.valueChanged.connect(self.paintCanvas)
+        self.zoomWidget.spinbox.valueChanged.connect(self.paintCanvas)
 
         # Display cursor coordinates at the right of status bar
         self.labelCoordinates = QLabel('')
@@ -323,69 +288,6 @@ class MainWindow(QMainWindow, WindowMixin):
         bar = self.scrollBars[orientation]
         bar.setValue(bar.value() + bar.singleStep() * units)
 
-    def setZoom(self, value):
-        self.actions.fitWidth.setChecked(False)
-        self.actions.fitWindow.setChecked(False)
-        self.zoomMode = self.MANUAL_ZOOM
-        self.zoomWidget.setValue(value)
-
-    def addZoom(self, increment=10):
-        self.setZoom(self.zoomWidget.value() + increment)
-
-    def zoomRequest(self, delta):
-        # get the current scrollbar positions
-        # calculate the percentages ~ coordinates
-        h_bar = self.scrollBars[Qt.Horizontal]
-        v_bar = self.scrollBars[Qt.Vertical]
-        # get the current maximum, to know the difference after zooming
-        h_bar_max = h_bar.maximum()
-        v_bar_max = v_bar.maximum()
-        # get the cursor position and canvas size
-        # calculate the desired movement from 0 to 1
-        # where 0 = move left
-        #       1 = move right
-        # up and down analogous
-        cursor = QCursor()
-        pos = cursor.pos()
-        relative_pos = QWidget.mapFromGlobal(self, pos)
-        cursor_x = relative_pos.x()
-        cursor_y = relative_pos.y()
-        w = self.scrollArea.width()
-        h = self.scrollArea.height()
-        # the scaling from 0 to 1 has some padding
-        # you don't have to hit the very leftmost pixel for a maximum-left movement
-        margin = 0.1
-        move_x = (cursor_x - margin * w) / (w - 2 * margin * w)
-        move_y = (cursor_y - margin * h) / (h - 2 * margin * h)
-        # clamp the values from 0 to 1
-        move_x = min(max(move_x, 0), 1)
-        move_y = min(max(move_y, 0), 1)
-        # zoom in
-        units = delta / (8 * 15)
-        scale = 10
-        self.addZoom(scale * units)
-        # get the difference in scrollbar values
-        # this is how far we can move
-        d_h_bar_max = h_bar.maximum() - h_bar_max
-        d_v_bar_max = v_bar.maximum() - v_bar_max
-        # get the new scrollbar values
-        new_h_bar_value = h_bar.value() + move_x * d_h_bar_max
-        new_v_bar_value = v_bar.value() + move_y * d_v_bar_max
-        h_bar.setValue(new_h_bar_value)
-        v_bar.setValue(new_v_bar_value)
-
-    def setFitWindow(self, value=True):
-        if value:
-            self.actions.fitWidth.setChecked(False)
-        self.zoomMode = self.FIT_WINDOW if value else self.MANUAL_ZOOM
-        self.adjustScale()
-
-    def setFitWidth(self, value=True):
-        if value:
-            self.actions.fitWindow.setChecked(False)
-        self.zoomMode = self.FIT_WIDTH if value else self.MANUAL_ZOOM
-        self.adjustScale()
-
     def loadMatching(self, data):
         self.matching = Matching(data, self.imageDir)
         self.matching.set_update_callback(self.getMatchingUpdateEvent)
@@ -410,30 +312,9 @@ class MainWindow(QMainWindow, WindowMixin):
         super(MainWindow, self).resizeEvent(event)
 
     def paintCanvas(self):
-        self.canvas.scale = 0.01 * self.zoomWidget.value()
+        self.canvas.scale = 0.01 * self.zoomWidget.spinbox.value()
         self.canvas.adjustSize()
         self.canvas.update()
-
-    def adjustScale(self, initial=False):
-        value = self.scalers[self.FIT_WINDOW if initial else self.zoomMode]()
-        self.zoomWidget.setValue(int(100 * value))
-
-    def scaleFitWindow(self):
-        """Figure out the size of the pixmap in order to fit the main widget."""
-        e = 2.0  # So that no scrollbars are generated.
-        w1 = self.centralWidget().width() - e
-        h1 = self.centralWidget().height() - e
-        a1 = w1 / h1
-        # Calculate a new scale value based on the pixmap's aspect ratio.
-        w2 = self.canvas.pixmap.width() - 0.0
-        h2 = self.canvas.pixmap.height() - 0.0
-        a2 = w2 / h2
-        return w1 / w2 if a2 >= a1 else h1 / h2
-
-    def scaleFitWidth(self):
-        # The epsilon does not seem to work too well here.
-        w = self.centralWidget().width() - 2.0
-        return w / self.canvas.pixmap.width()
 
     def closeEvent(self, event):
         # if not self.mayContinue():
