@@ -7,6 +7,7 @@ from PyQt5.QtWidgets import *
 from PointMatcher.__init__ import __appname__, __version__
 from PointMatcher.data.matching import Matching
 from PointMatcher.widgets.viewwidget import ViewWidget
+from PointMatcher.widgets.pairwidget import PairWidget
 from PointMatcher.widgets.settings import Settings
 from PointMatcher.widgets.stringbundle import StringBundle
 from PointMatcher.widgets.canvas import Canvas
@@ -58,17 +59,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.viewIWidget.itemClicked_connect(self.viewIitemClicked)
         self.viewJWidget = ViewWidget(parent=self, title=getStr('viewJList'))
         self.viewJWidget.itemClicked_connect(self.viewJitemClicked)
-
-        self.pairListWidget = QListWidget()
-        self.pairListWidget.itemClicked.connect(self.pairitemClicked)
-        pairlistLayout = QVBoxLayout()
-        pairlistLayout.setContentsMargins(0, 0, 0, 0)
-        pairlistLayout.addWidget(self.pairListWidget)
-        pairListContainer = QWidget()
-        pairListContainer.setLayout(pairlistLayout)
-        self.pairdock = QDockWidget(getStr('pairList'), self)
-        self.pairdock.setObjectName(getStr('pairs'))
-        self.pairdock.setWidget(pairListContainer)
+        self.pairWidget = PairWidget(parent=self, title=getStr('pairList'))
+        self.pairWidget.itemClicked_connect(self.pairitemClicked)
 
         self.zoomWidget = ZoomWidget(self, self.stringBundle)
         za = self.zoomWidget.actions
@@ -87,7 +79,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.scrollRequest.connect(self.scrollRequest)
 
         self.setCentralWidget(self.scrollArea)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.pairdock)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.pairWidget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.viewIWidget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.viewJWidget)
 
@@ -237,35 +229,35 @@ class MainWindow(QMainWindow, WindowMixin):
         pass
 
     def viewIitemClicked(self, item=None):
-        view_id_i = self.matching.get_view_id_by_idx(self.viewIWidget.get_current_idx())
-        view_id_j = self.matching.get_view_id_by_idx(self.viewJWidget.get_current_idx())
+        view_id_i = self.matching.get_view_id_by_view_idx(self.viewIWidget.get_current_idx())
+        view_id_j = self.matching.get_view_id_by_view_idx(self.viewJWidget.get_current_idx())
         self.changePair(view_id_i, view_id_j)
 
     def viewJitemClicked(self, item=None):
-        id_view_i = self.matching.get_view_id_by_idx(self.viewIWidget.get_current_idx())
-        id_view_j = self.matching.get_view_id_by_idx(self.viewJWidget.get_current_idx())
+        id_view_i = self.matching.get_view_id_by_view_idx(self.viewIWidget.get_current_idx())
+        id_view_j = self.matching.get_view_id_by_view_idx(self.viewJWidget.get_current_idx())
         self.changePair(id_view_i, id_view_j)
 
     def pairitemClicked(self, item=None):
-        idx = self.pairListWidget.currentIndex().row()
+        idx = self.pairWidget.get_current_idx()
         if idx < len(self.matching.get_pairs()):
             view_id_i = self.matching.get_pairs()[idx]['id_view_i']
             view_id_j = self.matching.get_pairs()[idx]['id_view_j']
             self.changePair(view_id_i, view_id_j)
 
     def changePair(self, view_id_i, view_id_j):
-        if len(self.matching.get_pairs()) < self.pairListWidget.count():
-            self.pairListWidget.takeItem(self.pairListWidget.count()-1)
+        if len(self.matching.get_pairs()) < self.pairWidget.count():
+            self.pairWidget.remove_last_item()
         pair_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
         if pair_idx is not None:
-            self.pairListWidget.setCurrentRow(pair_idx)
+            self.pairWidget.set_current_idx(pair_idx)
             self.actions.addPair.setEnabled(False)
             self.actions.removePair.setEnabled(True)
             self.actions.openNextPair.setEnabled(True)
             self.actions.openPrevPair.setEnabled(True)
         else:
-            self.pairListWidget.addItem('None ({}, {})'.format(view_id_i, view_id_j))
-            self.pairListWidget.setCurrentRow(self.pairListWidget.count()-1)
+            self.pairWidget.add_item('None ({}, {})'.format(view_id_i, view_id_j))
+            self.pairWidget.set_current_idx(self.pairWidget.count()-1)
             self.actions.addPair.setEnabled(True)
             self.actions.removePair.setEnabled(False)
             self.actions.openNextPair.setEnabled(False)
@@ -288,10 +280,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.setMatching(self.matching)
         self.viewIWidget.initialize_item(self.matching)
         self.viewJWidget.initialize_item(self.matching)
-        self.pairListWidget.clear()
-        for pair in self.matching.get_pairs():
-            self.pairListWidget.addItem(self.getPairItemText(
-                pair['id_view_i'], pair['id_view_j']))
+        self.pairWidget.initialize_item(self.matching)
         if 0 < len(self.matching.get_pairs()):
             view_id_i = self.matching.get_pairs()[0]['id_view_i']
             view_id_j = self.matching.get_pairs()[0]['id_view_j']
@@ -403,11 +392,11 @@ class MainWindow(QMainWindow, WindowMixin):
         self.changePair(view_id_i, view_id_j)
 
     def addPair(self):
-        view_id_i = self.matching.get_views()[self.viewListWidgetI.currentIndex().row()]['id_view']
-        view_id_j = self.matching.get_views()[self.viewListWidgetJ.currentIndex().row()]['id_view']
+        view_id_i = self.matching.get_view_id_by_view_idx(self.viewIWidget.get_current_idx())
+        view_id_j = self.matching.get_view_id_by_view_idx(self.viewJWidget.get_current_idx())
         self.matching.append_pair(view_id_i, view_id_j, update=False)
-        self.pairListWidget.item(self.pairListWidget.count() - 1).setText(
-            self.getPairItemText(view_id_i, view_id_j))
+        self.pairWidget.remove_last_item()
+        self.pairWidget.add_item(self.matching.get_pairs()[-1])
         self.changePair(view_id_i, view_id_j)
 
     def removePair(self):
@@ -419,7 +408,7 @@ class MainWindow(QMainWindow, WindowMixin):
         if (trans_view_id_i, trans_view_id_j) == (view_id_i, view_id_j):
             trans_view_id_i = self.matching.get_views()[0]['id_view']
             trans_view_id_j = self.matching.get_views()[1]['id_view']
-        self.pairListWidget.takeItem(self.matching.get_pair_idx())
+        self.pairWidget.remove_item_by_idx(self.matching.get_pair_idx())
         self.changePair(trans_view_id_i, trans_view_id_j)
         self.matching.remove_pair(view_id_i, view_id_j)
 
@@ -456,14 +445,6 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def getMatchingDirtyEvent(self):
         self.actions.saveFile.setEnabled(True)
-
-    def getPairItemText(self, view_id_i, view_id_j):
-        idx = self.matching.find_pair_idx(view_id_i, view_id_j)
-        if idx is not None:
-            p = self.matching.get_pairs()[idx]
-            return '({}, {}) [matches={}]'.format(
-                view_id_i, view_id_j, len(p['matches']))
-        raise RuntimeError('invalid view_id_i and view_id_j')
 
     def mayContinue(self):
         if self.matching is not None:

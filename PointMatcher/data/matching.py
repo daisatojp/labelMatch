@@ -142,8 +142,14 @@ class Matching:
     def get_pair_idx(self):
         return self._pair_idx
 
-    def get_view_id_by_idx(self, idx):
+    def get_view_id_by_view_idx(self, idx):
         return self.data['views'][idx]['id_view']
+
+    def get_view_id_i_by_pair_idx(self, idx):
+        return self.data['pairs'][idx]['id_view_i']
+
+    def get_view_id_j_by_pair_idx(self, idx):
+        return self.data['pairs'][idx]['id_view_j']
 
     def get_keypoints_count(self, view_id):
         view_idx = self.find_view_idx(view_id)
