@@ -6,11 +6,12 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PointMatcher.__init__ import __appname__, __version__
 from PointMatcher.data.matching import Matching
+from PointMatcher.widgets.viewwidget import ViewWidget
 from PointMatcher.widgets.settings import Settings
 from PointMatcher.widgets.stringbundle import StringBundle
 from PointMatcher.widgets.canvas import Canvas
 from PointMatcher.widgets.zoomwidget import ZoomWidget
-from PointMatcher.widgets.newfile_dialog import NewFileDialog
+from PointMatcher.widgets.newfiledialog import NewFileDialog
 from PointMatcher.widgets.toolbar import ToolBar
 from PointMatcher.widgets.utils import newAction, addActions, fmtShortcut, struct, icon_path, string_path
 
@@ -52,27 +53,17 @@ class MainWindow(QMainWindow, WindowMixin):
         self.imageDir = None
         self.savePath = None
 
-        self.viewIListWidget = QListWidget()
-        self.viewIListWidget.itemClicked.connect(self.viewIitemClicked)
-        viewIlistLayout = QVBoxLayout()
-        viewIlistLayout.setContentsMargins(0, 0, 0, 0)
-        viewIlistLayout.addWidget(self.viewIListWidget)
-        viewIListContainer = QWidget()
-        viewIListContainer.setLayout(viewIlistLayout)
+        self.viewIWidget = ViewWidget()
+        self.viewIWidget.itemClicked_connect(self.viewIitemClicked)
         self.viewIdock = QDockWidget(getStr('viewIList'), self)
         self.viewIdock.setObjectName(getStr('views'))
-        self.viewIdock.setWidget(viewIListContainer)
+        self.viewIdock.setWidget(self.viewIWidget)
 
-        self.viewJListWidget = QListWidget()
-        self.viewJListWidget.itemClicked.connect(self.viewJitemClicked)
-        viewJlistLayout = QVBoxLayout()
-        viewJlistLayout.setContentsMargins(0, 0, 0, 0)
-        viewJlistLayout.addWidget(self.viewJListWidget)
-        viewJListContainer = QWidget()
-        viewJListContainer.setLayout(viewJlistLayout)
+        self.viewJWidget = ViewWidget()
+        self.viewJWidget.itemClicked_connect(self.viewJitemClicked)
         self.viewJdock = QDockWidget(getStr('viewJList'), self)
         self.viewJdock.setObjectName(getStr('views'))
-        self.viewJdock.setWidget(viewJListContainer)
+        self.viewJdock.setWidget(self.viewJWidget)
 
         self.pairListWidget = QListWidget()
         self.pairListWidget.itemClicked.connect(self.pairitemClicked)
@@ -174,6 +165,12 @@ class MainWindow(QMainWindow, WindowMixin):
         editMatchMode.setCheckable(True)
         editMatchMode.setChecked(False)
         editMatchMode.setShortcut('e')
+        sanityCheck = newAction(
+            self, getStr('sanityCheck'), self.sanityCheck,
+            None, None, getStr('sanityCheckDetail'))
+        complementMatch = newAction(
+            self, getStr('complementMatch'), self.complementMatch,
+            None, None, getStr('complementMatchDetail'))
 
         # Help Menu
         showInfo = newAction(
@@ -209,6 +206,8 @@ class MainWindow(QMainWindow, WindowMixin):
             removePair=removePair,
             editKeypointMode=editKeypointMode,
             editMatchMode=editMatchMode,
+            sanityCheck=sanityCheck,
+            complementMatch=complementMatch,
             autoSaving=autoSaving,
             zoom=zoom,
             zoomIn=zoomIn,
@@ -229,7 +228,9 @@ class MainWindow(QMainWindow, WindowMixin):
             (openDir, newFile, openFile, saveFile, saveFileAs, closeFile, quitApp))
         addActions(
             self.menus.edit,
-            (addPair, removePair, None, editKeypointMode, editMatchMode))
+            (addPair, removePair,
+             None, editKeypointMode, editMatchMode,
+             None, sanityCheck, complementMatch))
         addActions(
             self.menus.view,
             (autoSaving,
@@ -278,13 +279,13 @@ class MainWindow(QMainWindow, WindowMixin):
         pass
 
     def viewIitemClicked(self, item=None):
-        view_id_i = self.matching.get_views()[self.viewIListWidget.currentIndex().row()]['id_view']
-        view_id_j = self.matching.get_views()[self.viewJListWidget.currentIndex().row()]['id_view']
+        view_id_i = self.matching.get_view_id_by_idx(self.viewIWidget.get_current_idx())
+        view_id_j = self.matching.get_view_id_by_idx(self.viewJWidget.get_current_idx())
         self.changePair(view_id_i, view_id_j)
 
     def viewJitemClicked(self, item=None):
-        id_view_i = self.matching.get_views()[self.viewIListWidget.currentIndex().row()]['id_view']
-        id_view_j = self.matching.get_views()[self.viewJListWidget.currentIndex().row()]['id_view']
+        id_view_i = self.matching.get_view_id_by_idx(self.viewIWidget.get_current_idx())
+        id_view_j = self.matching.get_view_id_by_idx(self.viewJWidget.get_current_idx())
         self.changePair(id_view_i, id_view_j)
 
     def pairitemClicked(self, item=None):
@@ -312,8 +313,8 @@ class MainWindow(QMainWindow, WindowMixin):
             self.actions.openNextPair.setEnabled(False)
             self.actions.openPrevPair.setEnabled(False)
         self.matching.set_view(view_id_i, view_id_j)
-        self.viewIListWidget.setCurrentRow(self.matching.get_view_idx_i())
-        self.viewJListWidget.setCurrentRow(self.matching.get_view_idx_j())
+        self.viewIWidget.set_current_idx(self.matching.get_view_idx_i())
+        self.viewJWidget.set_current_idx(self.matching.get_view_idx_j())
         self.canvas.updatePixmap()
         self.canvas.repaint()
 
@@ -390,12 +391,9 @@ class MainWindow(QMainWindow, WindowMixin):
         self.matching.set_update_callback(self.getMatchingUpdateEvent)
         self.matching.set_dirty_callback(self.getMatchingDirtyEvent)
         self.canvas.setMatching(self.matching)
-        self.viewIListWidget.clear()
-        self.viewJListWidget.clear()
+        self.viewIWidget.initialize_item(self.matching)
+        self.viewJWidget.initialize_item(self.matching)
         self.pairListWidget.clear()
-        for view in self.matching.get_views():
-            self.viewIListWidget.addItem(self.getViewItemText(view['id_view']))
-            self.viewJListWidget.addItem(self.getViewItemText(view['id_view']))
         for pair in self.matching.get_pairs():
             self.pairListWidget.addItem(self.getPairItemText(
                 pair['id_view_i'], pair['id_view_j']))
@@ -561,6 +559,12 @@ class MainWindow(QMainWindow, WindowMixin):
         self.actions.editMatchMode.setChecked(True)
         self.canvas.setEditMatchMode()
 
+    def sanityCheck(self):
+        pass
+
+    def complementMatch(self):
+        pass
+
     def showInfoDialog(self):
         msg = '{0}\nversion : {1}'.format(__appname__, __version__)
         QMessageBox.information(self, 'Information', msg)
@@ -568,26 +572,16 @@ class MainWindow(QMainWindow, WindowMixin):
     def getMatchingUpdateEvent(self):
         view_id_i = self.matching.get_view_id_i()
         view_id_j = self.matching.get_view_id_j()
-        self.viewIListWidget.item(self.matching.get_view_idx_i()).setText(
-            self.getViewItemText(view_id_i))
-        self.viewJListWidget.item(self.matching.get_view_idx_j()).setText(
-            self.getViewItemText(view_id_j))
+        view_idx_i = self.matching.get_view_idx_i()
+        view_idx_j = self.matching.get_view_idx_j()
+        self.viewIWidget.update_item_by_idx(self.matching, [view_idx_i, view_idx_j])
+        self.viewJWidget.update_item_by_idx(self.matching, [view_idx_i, view_idx_j])
         pair_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
         if pair_idx is not None:
             self.pairListWidget.item(pair_idx).setText(self.getPairItemText(view_id_i, view_id_j))
 
     def getMatchingDirtyEvent(self):
         self.actions.saveFile.setEnabled(True)
-
-    def getViewItemText(self, view_id):
-        idx = self.matching.find_view_idx(view_id)
-        if idx is not None:
-            v = self.matching.get_views()[idx]
-            return '{} | {} [keypoints={}]'.format(
-                view_id,
-                v['filename'],
-                len(v['keypoints']))
-        raise RuntimeError('invalid view_id')
 
     def getPairItemText(self, view_id_i, view_id_j):
         idx = self.matching.find_pair_idx(view_id_i, view_id_j)

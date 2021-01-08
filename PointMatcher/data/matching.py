@@ -32,7 +32,7 @@ class Matching:
         if type(data) is dict:
             self.data = data
         elif type(data) is str:
-            ext = osp.splitext(data)
+            ext = osp.splitext(data)[1]
             if ext == '.json':
                 with open(data, 'r') as f:
                     self.data = json.load(f)
@@ -141,6 +141,9 @@ class Matching:
 
     def get_pair_idx(self):
         return self._pair_idx
+
+    def get_view_id_by_idx(self, idx):
+        return self.data['views'][idx]['id_view']
 
     def get_keypoints_count(self, view_id):
         view_idx = self.find_view_idx(view_id)
@@ -362,6 +365,12 @@ class Matching:
 
     def set_dirty_callback(self, f):
         self._dirty_callback = f
+
+    # def sanity_check(self):
+    #     x = dict()
+        # group_id = 0
+        # for p in self.data['pairs']:
+        #     for m in p['matches']:
 
     @staticmethod
     def min_distance(x, y, keypoints):
