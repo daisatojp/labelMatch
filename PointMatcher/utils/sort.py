@@ -1,3 +1,5 @@
+import re
+
 
 def natural_sort(list, key=lambda s:s):
     """

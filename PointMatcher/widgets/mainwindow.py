@@ -6,7 +6,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
 from PointMatcher.__init__ import __appname__, __version__
 from PointMatcher.data.matching import Matching
-from PointMatcher.actions import OpenDirAction
+from PointMatcher.actions import OpenDirAction, NewFileAction
 from PointMatcher.widgets.viewwidget import ViewWidget
 from PointMatcher.widgets.pairwidget import PairWidget
 from PointMatcher.widgets.settings import Settings
@@ -14,9 +14,8 @@ from PointMatcher.widgets.stringbundle import StringBundle
 from PointMatcher.widgets.canvas import Canvas
 from PointMatcher.widgets.zoomwidget import ZoomWidget
 from PointMatcher.widgets.scrollwidget import ScrollWidget
-from PointMatcher.widgets.newfiledialog import NewFileDialog
 from PointMatcher.widgets.toolbar import ToolBar
-from PointMatcher.utils.filesystem import icon_path, string_path, scan_all_images
+from PointMatcher.utils.filesystem import icon_path, string_path
 from PointMatcher.utils.struct import struct
 from PointMatcher.utils.qt import newAction, addActions
 
@@ -77,9 +76,7 @@ class MainWindow(QMainWindow, WindowMixin):
 
         # File menu
         openDir = OpenDirAction(self)
-        newFile = newAction(
-            self, getStr('newFile'), self.newFile,
-            'Ctrl+N', 'open', getStr('newFileDetail'))
+        newFile = NewFileAction(self)
         openFile = newAction(
             self, getStr('openFile'), self.openFile,
             'Ctrl+O', 'open', getStr('openFileDetail'))
@@ -137,8 +134,6 @@ class MainWindow(QMainWindow, WindowMixin):
         showInfo = newAction(
             self, getStr('showInfo'), self.showInfoDialog,
             None, 'help', getStr('showInfoDetail'))
-
-        self.newFileDialog = NewFileDialog(self)
 
         self.actions = struct(
             openDir=openDir,
@@ -279,26 +274,6 @@ class MainWindow(QMainWindow, WindowMixin):
         # if not self.mayContinue():
         #     event.ignore()
         self.settings.save()
-
-    def newFile(self, _value=False):
-        if not self.mayContinue():
-            return
-        ret = self.newFileDialog.popUp()
-        if ret is None:
-            return
-        self.imageDir, self.savePath = ret
-        x = {'views': [], 'pairs': []}
-        image_paths = scan_all_images(self.imageDir)
-        for i in range(len(image_paths)):
-            for j in range(i + 1, len(image_paths)):
-                x['pairs'].append({'id_view_i': i, 'id_view_j': j, 'matches': []})
-        for i, image_path in enumerate(image_paths):
-            x['views'].append({
-                'id_view': i,
-                'filename': image_path[len(self.imageDir) + len(os.sep):].split(os.sep),
-                'keypoints': []})
-        self.loadMatching(x)
-        self.matching.save(self.savePath)
 
     def openFile(self, _value=False):
         if not self.mayContinue():

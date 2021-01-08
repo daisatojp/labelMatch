@@ -1,1 +1,2 @@
 from PointMatcher.actions.opendir import OpenDirAction
+from PointMatcher.actions.newfile import NewFileAction

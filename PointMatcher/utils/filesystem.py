@@ -1,6 +1,7 @@
 import sys
 import os
 import os.path as osp
+from PointMatcher.utils.sort import natural_sort
 
 
 here = osp.dirname(osp.abspath(__file__))
