@@ -4,16 +4,20 @@ from PyQt5 import QtCore
 from PyQt5 import QtWidgets
 
 
-class ViewWidget(QtWidgets.QWidget):
+class ViewWidget(QtWidgets.QDockWidget):
 
-    def __init__(self, parent=None):
-        super(ViewWidget, self).__init__(parent)
+    def __init__(self, parent=None, title=''):
+        super(ViewWidget, self).__init__(title, parent)
 
         self.viewListWidget = QtWidgets.QListWidget()
         self.viewlistLayout = QtWidgets.QVBoxLayout()
         self.viewlistLayout.setContentsMargins(0, 0, 0, 0)
         self.viewlistLayout.addWidget(self.viewListWidget)
-        self.setLayout(self.viewlistLayout)
+        self.viewWidget = QtWidgets.QWidget()
+        self.viewWidget.setLayout(self.viewlistLayout)
+        self.setObjectName('View')
+        self.setWidget(self.viewWidget)
+        self.setFeatures(QtWidgets.QDockWidget.DockWidgetFloatable)
 
     def itemClicked_connect(self, f):
         self.viewListWidget.itemClicked.connect(f)

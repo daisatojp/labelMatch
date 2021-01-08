@@ -54,17 +54,10 @@ class MainWindow(QMainWindow, WindowMixin):
         self.imageDir = None
         self.savePath = None
 
-        self.viewIWidget = ViewWidget()
+        self.viewIWidget = ViewWidget(parent=self, title=getStr('viewIList'))
         self.viewIWidget.itemClicked_connect(self.viewIitemClicked)
-        self.viewIdock = QDockWidget(getStr('viewIList'), self)
-        self.viewIdock.setObjectName(getStr('views'))
-        self.viewIdock.setWidget(self.viewIWidget)
-
-        self.viewJWidget = ViewWidget()
+        self.viewJWidget = ViewWidget(parent=self, title=getStr('viewJList'))
         self.viewJWidget.itemClicked_connect(self.viewJitemClicked)
-        self.viewJdock = QDockWidget(getStr('viewJList'), self)
-        self.viewJdock.setObjectName(getStr('views'))
-        self.viewJdock.setWidget(self.viewJWidget)
 
         self.pairListWidget = QListWidget()
         self.pairListWidget.itemClicked.connect(self.pairitemClicked)
@@ -95,10 +88,8 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.setCentralWidget(self.scrollArea)
         self.addDockWidget(Qt.RightDockWidgetArea, self.pairdock)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.viewIdock)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.viewJdock)
-        self.viewIdock.setFeatures(QDockWidget.DockWidgetFloatable)
-        self.viewJdock.setFeatures(QDockWidget.DockWidgetFloatable)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.viewIWidget)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.viewJWidget)
 
         # File menu
         openDir = newAction(
