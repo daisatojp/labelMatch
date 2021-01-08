@@ -10,7 +10,6 @@ from PointMatcher.actions import *
 from PointMatcher.widgets.viewwidget import ViewWidget
 from PointMatcher.widgets.pairwidget import PairWidget
 from PointMatcher.widgets.settings import Settings
-from PointMatcher.widgets.stringbundle import StringBundle
 from PointMatcher.widgets.canvas import Canvas
 from PointMatcher.widgets.zoomwidget import ZoomWidget
 from PointMatcher.widgets.scrollwidget import ScrollWidget

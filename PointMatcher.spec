@@ -7,8 +7,7 @@ a = Analysis(['PointMatcher/__main__.py'],
              pathex=['PointMatcher'],
              binaries=[],
              datas=[
-			     ('PointMatcher/package_data/icons/*', 'PointMatcher/package_data/icons'),
-			     ('PointMatcher/package_data/strings/*', 'PointMatcher/package_data/strings')
+			     ('PointMatcher/package_data/icons/*', 'PointMatcher/package_data/icons')
 			 ],
              hiddenimports=[],
              hookspath=[],

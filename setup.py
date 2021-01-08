@@ -63,7 +63,7 @@ def main():
             "Programming Language :: Python :: 3.7",
             'License :: OSI Approved :: MIT License',
         ],
-        package_data={'PointMatcher': ['icons/*', 'strings/*']},
+        package_data={'PointMatcher': ['icons/*']},
         entry_points={
             'console_scripts': [
                 'PointMatcher=PointMatcher.__main__:main',
