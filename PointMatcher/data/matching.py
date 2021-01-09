@@ -1,5 +1,6 @@
 import os
 import os.path as osp
+import copy
 import json
 import pickle
 import cv2
@@ -10,9 +11,9 @@ class Matching:
     def __init__(self, data=None, image_dir=None):
 
         if type(data) is dict:
-            self.data = data
+            self.data = copy.deepcopy(data)
         elif type(data) is Matching:
-            self.data = data.data.copy()
+            self.data = copy.deepcopy(data.data)
         elif type(data) is str:
             ext = osp.splitext(data)[1]
             if ext == '.json':
@@ -273,20 +274,21 @@ class Matching:
         self.selected_idx_j = None
 
     def copy(self):
-        m = Matching(self.data.copy())
+        m = Matching(self)
         return m
 
     def save(self, file_path):
+        data = copy.deepcopy(self.data)
+        self._dirty = False
         ext = osp.splitext(file_path)[1]
         if ext == '.json':
             with open(file_path, 'w') as f:
-                json.dump(self.data, f)
+                json.dump(data, f)
         elif ext == '.pkl':
             with open(file_path, 'wb') as f:
-                pickle.dump(self.data, f)
+                pickle.dump(data, f)
         else:
             raise RuntimeError('invalid file_path ({})'.format(file_path))
-        self._dirty = False
 
     def set_update(self):
         if self._update_callback:

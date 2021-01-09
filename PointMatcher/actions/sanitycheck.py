@@ -18,13 +18,13 @@ class SanityCheckAction(QAction):
         self.setEnabled(True)
         self.sanity_checked = False
         self.thread_executing_flag = True
-        self.thread = threading.Thread(target=self.sanityCheck)
+        self.thread = threading.Thread(target=self.sanityCheckThread)
         self.thread.start()
 
     def requireSanityCheck(self):
         self.sanity_checked = False
 
-    def sanityCheck(self):
+    def sanityCheckThread(self):
         while self.thread_executing_flag:
             if self.isChecked() and (self.p.matching is not None) and (not self.sanity_checked):
                 matching = self.p.matching.copy()

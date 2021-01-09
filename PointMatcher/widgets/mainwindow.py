@@ -206,10 +206,11 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.update()
 
     def closeEvent(self, event):
-        # if not self.mayContinue():
-        #     event.ignore()
+        if not self.mayContinue():
+            event.ignore()
         self.settings.save()
         self.actions.sanityCheck.terminate_thread()
+        self.actions.autoSaving.terminate_thread()
 
     def getMatchingUpdateEvent(self):
         view_id_i = self.matching.get_view_id_i()
@@ -224,7 +225,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.actions.sanityCheck.requireSanityCheck()
 
     def getMatchingDirtyEvent(self):
-        self.actions.saveFile.setEnabled(True)
+        if not self.actions.autoSaving.isChecked():
+            self.actions.saveFile.setEnabled(True)
 
     def updateTitle(self):
         if self.savePath is None:

@@ -75,9 +75,10 @@ class PairWidget(QDockWidget):
     def apply_bad_keypoints(self, bad_keypoints, matching):
         views = matching.get_views()
         pairs = matching.get_pairs()
+        pairs_count = len(pairs)
         bad_view_ids = [views[x[0]]['id_view'] for x in bad_keypoints]
         self.errorNum = 0
-        for idx in range(self.count()):
+        for idx in range(min(self.count(), pairs_count)):
             if (pairs[idx]['id_view_i'] in bad_view_ids) or (pairs[idx]['id_view_j'] in bad_view_ids):
                 self.pairListWidget.item(idx).setBackground(self.ITEM_COLOR_NG)
                 self.errorNum += 1
