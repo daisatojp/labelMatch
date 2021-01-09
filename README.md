@@ -9,7 +9,7 @@
 * Python3
 * PyQT5
 
-## How to Use
+## How to Start
 
 ### with Binary (Windows only)
 
@@ -34,23 +34,9 @@ cd PointMatcher
 python PointMatcher/__main__.py
 ```
 
-## Quick Start (Examle)
+## How to Use
 
-If you don't have annotation file (matching file)
-
-1. File > New File
-2. choose directory that stores images
-3. choose annotation file to be saved
-4. click ok
-5. let's enjoy annotation!
-
-If you have annotation file
-
-1. click "Open Dir" from toolbox
-2. choose directory that stores images
-3. click "Open File" from toolbox
-4. choose annotation file
-5. let's enjoy annotation!
+Please read the [Tutorial](https://pointmatcher.readthedocs.io/en/master/Tutorial/Tutorial.html).
 
 ## Annotation format
 
