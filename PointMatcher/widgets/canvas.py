@@ -92,7 +92,7 @@ class Canvas(QWidget):
                 else:
                     self.matching.highlighted_idx_i = None
                     self.matching.highlighted_idx_j = None
-            if posInViewJ and not self.matching.empty_i():
+            if posInViewJ and not self.matching.empty_j():
                 val, idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
                 if val < self.epsilon / self.scale and self.matching.selected_idx_j != idx:
                     self.matching.highlighted_idx_j = idx
@@ -110,23 +110,25 @@ class Canvas(QWidget):
         if self.mode == self.MODE_EDIT_KEYPOINT:
             if ev.button() == Qt.LeftButton:
                 if posInViewI:
-                    val, idx = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
-                    if val < self.epsilon / self.scale and self.matching.selected_idx_i != idx:
-                        self.matching.selected_idx_i = idx
+                    ret = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
+                    if (ret is not None) and \
+                            (ret[0] < self.epsilon / self.scale and self.matching.selected_idx_i != ret[1]):
+                        self.matching.selected_idx_i = ret[1]
                         self.matching.highlighted_idx_i = None
                     else:
                         self.matching.append_keypoint_in_view_i(posInViewI[0], posInViewI[1])
                 if posInViewJ:
-                    val, idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
-                    if val < self.epsilon / self.scale and self.matching.selected_idx_j != idx:
-                        self.matching.selected_idx_j = idx
+                    ret = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
+                    if (ret is not None) and \
+                            (ret[0] < self.epsilon / self.scale and self.matching.selected_idx_j != ret[1]):
+                        self.matching.selected_idx_j = ret[1]
                         self.matching.highlighted_idx_j = None
                     else:
                         self.matching.append_keypoint_in_view_j(posInViewJ[0], posInViewJ[1])
 
         if self.mode == self.MODE_EDIT_MATCH:
             if ev.button() == Qt.LeftButton:
-                if posInViewI:
+                if posInViewI and (not self.matching.empty_i()):
                     val, idx = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
                     nearby = val < self.epsilon / self.scale
                     if nearby and (self.matching.selected_idx_j is not None):
@@ -144,7 +146,7 @@ class Canvas(QWidget):
                         self.matching.highlighted_idx_i = None
                     elif nearby and (self.matching.selected_idx_j is None) and (self.matching.selected_idx_i == idx):
                         self.matching.clear_decoration()
-                if posInViewJ:
+                if posInViewJ and (not self.matching.empty_j()):
                     val, idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
                     nearby = val < self.epsilon / self.scale
                     if nearby and (self.matching.selected_idx_i is not None):

@@ -309,12 +309,6 @@ class Matching:
     def set_dirty_callback(self, f):
         self._dirty_callback = f
 
-    # def sanity_check(self):
-    #     x = dict()
-        # group_id = 0
-        # for p in self.data['pairs']:
-        #     for m in p['matches']:
-
     @staticmethod
     def min_distance(x, y, keypoints):
         if len(keypoints) == 0:

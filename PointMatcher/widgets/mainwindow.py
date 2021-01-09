@@ -196,6 +196,10 @@ class MainWindow(QMainWindow, WindowMixin):
         self.viewJWidget.set_current_idx(self.matching.get_view_idx_j())
         self.canvas.updatePixmap()
         self.canvas.repaint()
+        if self.actions.autoSaving.isChecked():
+            if self.matching.dirty():
+                self.matching.save(self.savePath)
+                self.actions.saveFile.setEnabled(False)
 
     def resizeEvent(self, event):
         super(MainWindow, self).resizeEvent(event)
@@ -210,7 +214,6 @@ class MainWindow(QMainWindow, WindowMixin):
             event.ignore()
         self.settings.save()
         self.actions.sanityCheck.terminate_thread()
-        self.actions.autoSaving.terminate_thread()
 
     def getMatchingUpdateEvent(self):
         view_id_i = self.matching.get_view_id_i()
