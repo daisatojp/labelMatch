@@ -3,7 +3,7 @@ import time
 import threading
 from PyQt5.QtWidgets import QAction
 from PointMatcher.utils.filesystem import icon_path
-from PointMatcher.data.op import list_pairs, sanity_check
+from PointMatcher.data.op import sanity_check
 
 
 class InspectionAction(QAction):
@@ -29,15 +29,11 @@ class InspectionAction(QAction):
             if self.isChecked() and (self.p.matching is not None) and (not self.inspected):
                 matching = self.p.matching.copy()
                 self.inspected = True
-                bad_keypoints = sanity_check(matching)
+                bad_keypoints, _ = sanity_check(matching)
                 self.p.viewIWidget.apply_bad_keypoints(bad_keypoints)
                 self.p.viewJWidget.apply_bad_keypoints(bad_keypoints)
                 self.p.pairWidget.apply_bad_keypoints(bad_keypoints, matching)
                 self.p.canvas.mp.set_bad_keypoints(bad_keypoints, matching)
-                pair_lists = list_pairs(matching)
-                self.p.matching.set_pair_lists(pair_lists)
-                self.p.viewIWidget.update_all()
-                self.p.viewJWidget.update_all()
             time.sleep(0.1)
 
     def terminate_thread(self):

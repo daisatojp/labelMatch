@@ -14,4 +14,5 @@ from PointMatcher.actions.editkeypointmode import EditKeypointModeAction
 from PointMatcher.actions.editmatchmode import EditMatchModeAction
 from PointMatcher.actions.inspection import InspectionAction
 from PointMatcher.actions.complementmatch import ComplementMatchAction
+from PointMatcher.actions.sortpair import SortPairAction
 from PointMatcher.actions.showinfo import ShowInfoAction

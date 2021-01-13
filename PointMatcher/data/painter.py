@@ -91,9 +91,13 @@ class MatchingPainter:
             highlighted_idx_in_view_j = matching.find_match_idx_in_view_j(matching.highlighted_idx_j)
             selected_idx_in_view_i = matching.find_match_idx_in_view_i(matching.selected_idx_i)
             selected_idx_in_view_j = matching.find_match_idx_in_view_j(matching.selected_idx_j)
+            view_i_keypoints = matching.get_view_i()['keypoints']
+            view_j_keypoints = matching.get_view_j()['keypoints']
             for idx, match in enumerate(matching.get_pair()['matches']):
-                keypoint_i = matching.get_view_i()['keypoints'][match[0]]
-                keypoint_j = matching.get_view_j()['keypoints'][match[1]]
+                if len(view_i_keypoints) <= match[0] or len(view_j_keypoints) <= match[1]:
+                    continue
+                keypoint_i = view_i_keypoints[match[0]]
+                keypoint_j = view_j_keypoints[match[1]]
                 match_path = QPainterPath()
                 match_path.moveTo(keypoint_i[0] + self.draw_offset_i_x, keypoint_i[1] + self.draw_offset_i_y)
                 match_path.lineTo(keypoint_j[0] + self.draw_offset_j_x, keypoint_j[1] + self.draw_offset_j_y)

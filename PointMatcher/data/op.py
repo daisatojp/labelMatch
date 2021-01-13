@@ -8,7 +8,14 @@ def count_all_keypoints(matching):
     return n
 
 
-def list_pairs(matching):
+def count_all_matches(matching):
+    n = 0
+    for pairs in matching.get_pairs():
+        n += len(pairs['matches'])
+    return n
+
+
+def get_adjacencies(matching):
     x = {}
     for pair in matching.get_pairs():
         view_id_i = pair['id_view_i']
@@ -79,4 +86,4 @@ def sanity_check(matching):
             for x in groups[key]:
                 if x[0] in bad_view_indices:
                     bad_keypoints.append(x)
-    return bad_keypoints
+    return bad_keypoints, groups

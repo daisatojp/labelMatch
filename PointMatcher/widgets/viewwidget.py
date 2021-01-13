@@ -71,12 +71,9 @@ class ViewWidget(QDockWidget):
 
     @staticmethod
     def item_text(view):
-        pair_count = 0
-        if 'pairs' in view:
-            pair_count = len(view['pairs'])
         return '(ID={}, K={}, P={}) {}'.format(
             view['id_view'],
             len(view['keypoints']),
-            pair_count,
+            len(view['adjacencies']),
             osp.join(*view['filename']))
 

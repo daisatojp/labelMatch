@@ -1,9 +1,11 @@
 import os
 import os.path as osp
+from functools import cmp_to_key
 import copy
 import json
 import pickle
 import cv2
+from PointMatcher.data.op import get_adjacencies
 
 
 class Matching:
@@ -136,11 +138,14 @@ class Matching:
         self.set_update()
         self.set_dirty()
 
-    def set_pair_lists(self, pair_lists):
-        for key in pair_lists:
-            idx = self.find_view_idx(key)
-            if idx is not None:
-                self.data['views'][idx]['pairs'] = pair_lists[key]
+    def update_adjacencies(self):
+        adjacencies = get_adjacencies(self)
+        for idx in range(len(self.data['views'])):
+            view_id = self.data['views'][idx]['id_view']
+            if view_id in adjacencies:
+                self.data['views'][idx]['adjacencies'] = adjacencies[view_id]
+            else:
+                self.data['views'][idx]['adjacencies'] = []
 
     def append_keypoint_in_view_i(self, x, y):
         self.data['views'][self._view_idx_i]['keypoints'].append([x, y])
@@ -153,7 +158,8 @@ class Matching:
         self.set_dirty()
 
     def append_pair(self, view_id_i, view_id_j, update=True):
-        if self.find_pair_idx(view_id_i, view_id_j) is None:
+        idx = self.find_pair_idx(view_id_i, view_id_j)
+        if idx is None:
             self.data['pairs'].append({
                 'id_view_i': view_id_i,
                 'id_view_j': view_id_j,
@@ -161,20 +167,26 @@ class Matching:
             if update:
                 self.set_update()
             self.set_dirty()
-            return True
+            return len(self.data['pairs']) - 1
         else:
-            return False
+            return idx
 
-    def append_match(self, keypoint_idx_i, keypoint_idx_j):
-        if self._pair_idx is not None:
+    def append_match(self, keypoint_idx_i, keypoint_idx_j, pair_idx=None, raise_exception=True, update=True):
+        if pair_idx is None:
+            pair_idx = self._pair_idx
+        if pair_idx is not None:
             arr = [match[0] == keypoint_idx_i or match[1] == keypoint_idx_j
-                   for match in self.data['pairs'][self._pair_idx]['matches']]
+                   for match in self.data['pairs'][pair_idx]['matches']]
             if any(arr):
-                raise RuntimeWarning('this keypoints are assined as a match')
-            self.data['pairs'][self._pair_idx]['matches'].append([keypoint_idx_i, keypoint_idx_j])
+                if raise_exception:
+                    raise RuntimeWarning('this keypoints are assined as a match')
+                else:
+                    return
+            self.data['pairs'][pair_idx]['matches'].append([keypoint_idx_i, keypoint_idx_j])
         else:
             raise RuntimeWarning('This view pair is not registered.')
-        self.set_update()
+        if update:
+            self.set_update()
         self.set_dirty()
 
     def remove_keypoint_in_view_i(self, idx):
@@ -234,6 +246,19 @@ class Matching:
 
     def empty_j(self):
         return len(self.data['views'][self._view_idx_j]['keypoints']) == 0
+
+    def sort_pairs(self):
+        def comparator(pair_i, pair_j):
+            if pair_i['id_view_i'] > pair_j['id_view_i']:
+                return 1
+            if pair_i['id_view_i'] < pair_j['id_view_i']:
+                return -1
+            if pair_i['id_view_j'] > pair_j['id_view_j']:
+                return 1
+            if pair_i['id_view_j'] < pair_j['id_view_j']:
+                return -1
+            return 0
+        self.data['pairs'] = sorted(self.data['pairs'], key=cmp_to_key(comparator))
 
     def min_distance_in_view_i(self, x, y):
         return Matching.min_distance(x, y, self.data['views'][self._view_idx_i]['keypoints'])

@@ -85,6 +85,7 @@ class MainWindow(QMainWindow, WindowMixin):
             editMatchMode=EditMatchModeAction(self),
             inspection=InspectionAction(self),
             complementMatch=ComplementMatchAction(self),
+            sortPair=SortPairAction(self),
             autoSaving=AutoSavingAction(self),
             showInfo=ShowInfoAction(self))
 
@@ -104,7 +105,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.menus.edit,
             (a.addPair, a.removePair,
              None, a.editKeypointMode, a.editMatchMode,
-             None, a.inspection, a.complementMatch))
+             None, a.inspection, a.complementMatch, a.sortPair))
         addActions(
             self.menus.view,
             (a.autoSaving,
@@ -141,12 +142,13 @@ class MainWindow(QMainWindow, WindowMixin):
 
     def loadMatching(self, data):
         self.matching = Matching(data, self.imageDir)
+        self.matching.update_adjacencies()
         self.matching.set_update_callback(self.getMatchingUpdateEvent)
         self.matching.set_dirty_callback(self.getMatchingDirtyEvent)
         self.canvas.setMatching(self.matching)
         self.viewIWidget.update_all()
         self.viewJWidget.update_all()
-        self.pairWidget.initialize_item(self.matching)
+        self.pairWidget.update_all()
         if 0 < len(self.matching.get_pairs()):
             view_id_i = self.matching.get_pairs()[0]['id_view_i']
             view_id_j = self.matching.get_pairs()[0]['id_view_j']

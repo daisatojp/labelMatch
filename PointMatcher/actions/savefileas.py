@@ -31,4 +31,4 @@ class SaveFileAsAction(QAction):
                 filename = filename[0]
             self.p.savePath = filename
             self.p.matching.save(self.p.savePath)
-
+            self.p.updateTitle()

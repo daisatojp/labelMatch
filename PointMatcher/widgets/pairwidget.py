@@ -31,12 +31,6 @@ class PairWidget(QDockWidget):
     def itemClicked_connect(self, f):
         self.pairListWidget.itemClicked.connect(f)
 
-    def initialize_item(self, matching):
-        pairs = matching.get_pairs()
-        self.pairListWidget.clear()
-        for pair in pairs:
-            self.add_item(pair)
-
     def count(self):
         return self.pairListWidget.count()
 
@@ -57,6 +51,20 @@ class PairWidget(QDockWidget):
 
     def remove_last_item(self):
         self.remove_item_by_idx(self.count() - 1)
+
+    def update_all(self):
+        matching = self.p.matching.copy()
+        count = self.count()
+        pairs = matching.get_pairs()
+        pair_count = len(pairs)
+        for idx in range(max(pair_count, count)):
+            text = self.item_text(pairs[idx])
+            if count <= idx:
+                self.pairListWidget.addItem(text)
+            elif pair_count <= idx:
+                self.pairListWidget.takeItem(pair_count)
+            else:
+                self.pairListWidget.item(idx).setText(text)
 
     def update_item_by_idx(self, matching, idx):
         pairs = matching.get_pairs()
