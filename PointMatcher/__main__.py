@@ -6,7 +6,7 @@ from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 
 from PointMatcher.__init__ import __appname__
-from PointMatcher.widgets.mainwindow import MainWindow
+from PointMatcher.mainwindow import MainWindow
 from PointMatcher.utils.filesystem import icon_path
 
 

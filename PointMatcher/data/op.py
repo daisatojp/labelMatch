@@ -8,6 +8,20 @@ def count_all_keypoints(matching):
     return n
 
 
+def list_pairs(matching):
+    x = {}
+    for pair in matching.get_pairs():
+        view_id_i = pair['id_view_i']
+        view_id_j = pair['id_view_j']
+        if view_id_i not in x:
+            x[view_id_i] = []
+        if view_id_j not in x:
+            x[view_id_j] = []
+        x[view_id_i].append(view_id_j)
+        x[view_id_j].append(view_id_i)
+    return x
+
+
 def grouping(matching):
     ma = matching
     ma_data = ma.data

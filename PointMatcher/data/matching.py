@@ -136,6 +136,12 @@ class Matching:
         self.set_update()
         self.set_dirty()
 
+    def set_pair_lists(self, pair_lists):
+        for key in pair_lists:
+            idx = self.find_view_idx(key)
+            if idx is not None:
+                self.data['views'][idx]['pairs'] = pair_lists[key]
+
     def append_keypoint_in_view_i(self, x, y):
         self.data['views'][self._view_idx_i]['keypoints'].append([x, y])
         self.set_update()

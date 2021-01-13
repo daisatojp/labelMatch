@@ -3,37 +3,41 @@ import time
 import threading
 from PyQt5.QtWidgets import QAction
 from PointMatcher.utils.filesystem import icon_path
-from PointMatcher.data.op import sanity_check
+from PointMatcher.data.op import list_pairs, sanity_check
 
 
-class SanityCheckAction(QAction):
+class InspectionAction(QAction):
 
     def __init__(self, parent):
-        super(SanityCheckAction, self).__init__('Sanity Check', parent)
+        super(InspectionAction, self).__init__('Inspection', parent)
 
         self.p = parent
 
         self.setCheckable(True)
         self.setChecked(True)
         self.setEnabled(True)
-        self.sanity_checked = False
+        self.inspected = False
         self.thread_executing_flag = True
-        self.thread = threading.Thread(target=self.sanityCheckThread)
+        self.thread = threading.Thread(target=self.inspectionThread)
         self.thread.start()
 
-    def requireSanityCheck(self):
-        self.sanity_checked = False
+    def requireInspection(self):
+        self.inspected = False
 
-    def sanityCheckThread(self):
+    def inspectionThread(self):
         while self.thread_executing_flag:
-            if self.isChecked() and (self.p.matching is not None) and (not self.sanity_checked):
+            if self.isChecked() and (self.p.matching is not None) and (not self.inspected):
                 matching = self.p.matching.copy()
-                self.sanity_checked = True
+                self.inspected = True
                 bad_keypoints = sanity_check(matching)
                 self.p.viewIWidget.apply_bad_keypoints(bad_keypoints)
                 self.p.viewJWidget.apply_bad_keypoints(bad_keypoints)
                 self.p.pairWidget.apply_bad_keypoints(bad_keypoints, matching)
                 self.p.canvas.mp.set_bad_keypoints(bad_keypoints, matching)
+                pair_lists = list_pairs(matching)
+                self.p.matching.set_pair_lists(pair_lists)
+                self.p.viewIWidget.update_all()
+                self.p.viewJWidget.update_all()
             time.sleep(0.1)
 
     def terminate_thread(self):

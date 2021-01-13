@@ -14,6 +14,7 @@ class ViewWidget(QDockWidget):
 
     def __init__(self, parent=None, title=''):
         super(ViewWidget, self).__init__(title, parent)
+        self.p = parent
 
         self.viewListWidget = QListWidget()
         self.viewlistLayout = QVBoxLayout()
@@ -28,12 +29,6 @@ class ViewWidget(QDockWidget):
     def itemClicked_connect(self, f):
         self.viewListWidget.itemClicked.connect(f)
 
-    def initialize_item(self, matching):
-        views = matching.get_views()
-        self.viewListWidget.clear()
-        for view in views:
-            self.viewListWidget.addItem(self.item_text(view))
-
     def count(self):
         return self.viewListWidget.count()
 
@@ -42,6 +37,20 @@ class ViewWidget(QDockWidget):
 
     def set_current_idx(self, idx):
         self.viewListWidget.setCurrentRow(idx)
+
+    def update_all(self):
+        matching = self.p.matching.copy()
+        count = self.count()
+        views = matching.get_views()
+        view_count = len(views)
+        for idx in range(max(view_count, count)):
+            text = self.item_text(views[idx])
+            if count <= idx:
+                self.viewListWidget.addItem(text)
+            elif view_count <= idx:
+                self.viewListWidget.takeItem(view_count)
+            else:
+                self.viewListWidget.item(idx).setText(text)
 
     def update_item_by_idx(self, matching, idx):
         views = matching.get_views()
@@ -62,7 +71,12 @@ class ViewWidget(QDockWidget):
 
     @staticmethod
     def item_text(view):
-        return '(ID={}, K={}) {}'.format(
+        pair_count = 0
+        if 'pairs' in view:
+            pair_count = len(view['pairs'])
+        return '(ID={}, K={}, P={}) {}'.format(
             view['id_view'],
             len(view['keypoints']),
+            pair_count,
             osp.join(*view['filename']))
+

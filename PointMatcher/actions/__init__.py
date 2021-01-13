@@ -12,6 +12,6 @@ from PointMatcher.actions.addpair import AddPairAction
 from PointMatcher.actions.removepair import RemovePairAction
 from PointMatcher.actions.editkeypointmode import EditKeypointModeAction
 from PointMatcher.actions.editmatchmode import EditMatchModeAction
-from PointMatcher.actions.sanitycheck import SanityCheckAction
+from PointMatcher.actions.inspection import InspectionAction
 from PointMatcher.actions.complementmatch import ComplementMatchAction
 from PointMatcher.actions.showinfo import ShowInfoAction

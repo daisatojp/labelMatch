@@ -83,7 +83,7 @@ class MainWindow(QMainWindow, WindowMixin):
             removePair=RemovePairAction(self),
             editKeypointMode=EditKeypointModeAction(self),
             editMatchMode=EditMatchModeAction(self),
-            sanityCheck=SanityCheckAction(self),
+            inspection=InspectionAction(self),
             complementMatch=ComplementMatchAction(self),
             autoSaving=AutoSavingAction(self),
             showInfo=ShowInfoAction(self))
@@ -104,7 +104,7 @@ class MainWindow(QMainWindow, WindowMixin):
             self.menus.edit,
             (a.addPair, a.removePair,
              None, a.editKeypointMode, a.editMatchMode,
-             None, a.sanityCheck, a.complementMatch))
+             None, a.inspection, a.complementMatch))
         addActions(
             self.menus.view,
             (a.autoSaving,
@@ -144,8 +144,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.matching.set_update_callback(self.getMatchingUpdateEvent)
         self.matching.set_dirty_callback(self.getMatchingDirtyEvent)
         self.canvas.setMatching(self.matching)
-        self.viewIWidget.initialize_item(self.matching)
-        self.viewJWidget.initialize_item(self.matching)
+        self.viewIWidget.update_all()
+        self.viewJWidget.update_all()
         self.pairWidget.initialize_item(self.matching)
         if 0 < len(self.matching.get_pairs()):
             view_id_i = self.matching.get_pairs()[0]['id_view_i']
@@ -155,7 +155,7 @@ class MainWindow(QMainWindow, WindowMixin):
             view_id_j = self.matching.get_views()[1]['id_view']
         self.changePair(view_id_i, view_id_j)
         self.actions.saveFileAs.setEnabled(True)
-        self.actions.sanityCheck.requireSanityCheck()
+        self.actions.inspection.requireInspection()
 
     def viewIitemClicked(self, item=None):
         view_id_i = self.matching.get_view_id_by_view_idx(self.viewIWidget.get_current_idx())
@@ -213,7 +213,7 @@ class MainWindow(QMainWindow, WindowMixin):
         if not self.mayContinue():
             event.ignore()
         self.settings.save()
-        self.actions.sanityCheck.terminate_thread()
+        self.actions.inspection.terminate_thread()
 
     def getMatchingUpdateEvent(self):
         view_id_i = self.matching.get_view_id_i()
@@ -225,7 +225,7 @@ class MainWindow(QMainWindow, WindowMixin):
         pair_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
         if pair_idx is not None:
             self.pairWidget.update_item_by_idx(self.matching, pair_idx)
-        self.actions.sanityCheck.requireSanityCheck()
+        self.actions.inspection.requireInspection()
 
     def getMatchingDirtyEvent(self):
         if not self.actions.autoSaving.isChecked():
