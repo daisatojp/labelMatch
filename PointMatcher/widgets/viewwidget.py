@@ -52,8 +52,8 @@ class ViewWidget(QDockWidget):
             else:
                 self.viewListWidget.item(idx).setText(text)
 
-    def update_item_by_idx(self, matching, idx):
-        views = matching.get_views()
+    def update_item_by_idx(self, idx):
+        views = self.p.matching.get_views()
         if type(idx) in (list, tuple):
             for i in idx:
                 self.viewListWidget.item(i).setText(self.item_text(views[i]))

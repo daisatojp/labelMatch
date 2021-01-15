@@ -158,12 +158,18 @@ class Matching:
         self.set_dirty()
 
     def append_pair(self, view_id_i, view_id_j, update=True):
+        view_idx_i = self.find_view_idx(view_id_i)
+        view_idx_j = self.find_view_idx(view_id_j)
+        if view_idx_i is None or view_idx_j is None:
+            raise RuntimeError('invalid view_id')
         idx = self.find_pair_idx(view_id_i, view_id_j)
         if idx is None:
             self.data['pairs'].append({
                 'id_view_i': view_id_i,
                 'id_view_j': view_id_j,
                 'matches': []})
+            self.data['views'][view_idx_i]['adjacencies'].append(view_id_j)
+            self.data['views'][view_idx_j]['adjacencies'].append(view_id_i)
             if update:
                 self.set_update()
             self.set_dirty()

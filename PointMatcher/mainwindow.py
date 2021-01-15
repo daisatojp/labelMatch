@@ -222,8 +222,8 @@ class MainWindow(QMainWindow, WindowMixin):
         view_id_j = self.matching.get_view_id_j()
         view_idx_i = self.matching.get_view_idx_i()
         view_idx_j = self.matching.get_view_idx_j()
-        self.viewIWidget.update_item_by_idx(self.matching, [view_idx_i, view_idx_j])
-        self.viewJWidget.update_item_by_idx(self.matching, [view_idx_i, view_idx_j])
+        self.viewIWidget.update_item_by_idx([view_idx_i, view_idx_j])
+        self.viewJWidget.update_item_by_idx([view_idx_i, view_idx_j])
         pair_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
         if pair_idx is not None:
             self.pairWidget.update_item_by_idx(self.matching, pair_idx)

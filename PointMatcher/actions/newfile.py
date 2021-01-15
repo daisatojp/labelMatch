@@ -101,6 +101,7 @@ class NewFileAction(QtWidgets.QAction):
             x['views'].append({
                 'id_view': i,
                 'filename': image_path[len(self.parent.imageDir) + len(os.sep):].split(os.sep),
-                'keypoints': []})
+                'keypoints': [],
+                'adjacencies': []})
         self.parent.loadMatching(x)
         self.parent.matching.save(self.parent.savePath)
