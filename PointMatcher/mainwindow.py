@@ -1,23 +1,13 @@
-import os
-import os.path as osp
-from functools import partial
-import threading
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from PointMatcher.__init__ import __appname__, __version__
-from PointMatcher.data.matching import Matching
+from PointMatcher.__init__ import __appname__
+from PointMatcher.widgets import *
 from PointMatcher.actions import *
-from PointMatcher.widgets.viewwidget import ViewWidget
-from PointMatcher.widgets.pairwidget import PairWidget
-from PointMatcher.widgets.settings import Settings
-from PointMatcher.widgets.canvas import Canvas
-from PointMatcher.widgets.zoomwidget import ZoomWidget
-from PointMatcher.widgets.scrollwidget import ScrollWidget
-from PointMatcher.widgets.toolbar import ToolBar
-from PointMatcher.utils.filesystem import icon_path, string_path
+from PointMatcher.data.matching import Matching
+from PointMatcher.settings import Settings
 from PointMatcher.utils.struct import struct
-from PointMatcher.utils.qt import newAction, addActions
+from PointMatcher.utils.qt import addActions
 
 
 class WindowMixin(object):
@@ -46,46 +36,38 @@ class MainWindow(QMainWindow, WindowMixin):
 
         self.matching = None
         self.imageDir = None
-        self.savePath = None
+        self.annotDir = None
 
         self.settings = Settings()
         self.settings.load()
 
-        self.viewIWidget = ViewWidget(parent=self, title='View List (First)')
-        self.viewIWidget.itemClicked_connect(self.viewIitemClicked)
-        self.viewJWidget = ViewWidget(parent=self, title='View List (Second)')
-        self.viewJWidget.itemClicked_connect(self.viewJitemClicked)
-        self.pairWidget = PairWidget(parent=self, title='Pair List')
-        self.pairWidget.itemClicked_connect(self.pairitemClicked)
+        self.viewIWidget = ViewIWidget(parent=self)
+        self.viewIWidget.itemClicked_connect(self.viewitemClicked)
+        self.viewJWidget = ViewJWidget(parent=self)
+        self.viewJWidget.itemClicked_connect(self.viewitemClicked)
 
-        self.canvas = Canvas(parent=self)
+        self.canvas = Canvas(self)
         self.zoomWidget = ZoomWidget(self)
         self.scrollWidget = ScrollWidget(self)
         self.canvas.zoomRequest.connect(self.zoomWidget.zoomRequest)
         self.canvas.scrollRequest.connect(self.scrollWidget.scrollRequest)
 
         self.setCentralWidget(self.scrollWidget)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.pairWidget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.viewIWidget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.viewJWidget)
 
         self.actions = struct(
-            openDir=OpenDirAction(self),
-            newFile=NewFileAction(self),
-            openFile=OpenFileAction(self),
-            saveFile=SaveFileAction(self),
-            saveFileAs=SaveFileAsAction(self),
-            closeFile=CloseFileAction(self),
+            newProject=NewProjectAction(self),
+            openImageDir=OpenImageDirAction(self),
+            openAnnotDir=OpenAnnotDirAction(self),
+            save=SaveAction(self),
+            export=ExportAction(self),
+            close=CloseAction(self),
             quitApp=QuitAppAction(self),
-            openNextPair=OpenNextPairAction(self),
-            openPrevPair=OpenPrevPairAction(self),
-            addPair=AddPairAction(self),
-            removePair=RemovePairAction(self),
+            openNextView=OpenNextViewAction(self),
+            openPrevView=OpenPrevViewAction(self),
             editKeypointMode=EditKeypointModeAction(self),
             editMatchMode=EditMatchModeAction(self),
-            inspection=InspectionAction(self),
-            complementMatch=ComplementMatchAction(self),
-            sortPair=SortPairAction(self),
             autoSaving=AutoSavingAction(self),
             showInfo=ShowInfoAction(self))
 
@@ -100,12 +82,10 @@ class MainWindow(QMainWindow, WindowMixin):
         za = self.zoomWidget.actions
         addActions(
             self.menus.file,
-            (a.openDir, a.newFile, a.openFile, a.saveFile, a.saveFileAs, a.closeFile, a.quitApp))
+            (a.newProject, a.openImageDir, a.openAnnotDir, a.save, a.export, a.close, a.quitApp))
         addActions(
             self.menus.edit,
-            (a.addPair, a.removePair,
-             None, a.editKeypointMode, a.editMatchMode,
-             None, a.inspection, a.complementMatch, a.sortPair))
+            (a.editKeypointMode, a.editMatchMode))
         addActions(
             self.menus.view,
             (a.autoSaving,
@@ -118,8 +98,8 @@ class MainWindow(QMainWindow, WindowMixin):
         self.tools = self.toolbar('Tools')
         addActions(
             self.tools,
-            (a.openDir, a.openFile, a.saveFile, a.saveFileAs,
-             None, a.addPair, a.removePair, a.openNextPair, a.openPrevPair,
+            (a.openImageDir, a.openAnnotDir, a.save, a.export,
+             None, a.openNextView, a.openPrevView,
              None, za.zoomIn, za.zoom, za.zoomOut, za.zoomFitWindow, za.zoomFitWidth))
 
         self.statusBar().showMessage('{} started.'.format(__appname__))
@@ -140,68 +120,35 @@ class MainWindow(QMainWindow, WindowMixin):
         self.labelCoordinates = QLabel('')
         self.statusBar().addPermanentWidget(self.labelCoordinates)
 
-    def loadMatching(self, data):
-        self.matching = Matching(data, self.imageDir)
-        self.matching.update_adjacencies()
+    def loadMatching(self):
+        self.matching = Matching(self.annotDir)
         self.matching.set_update_callback(self.getMatchingUpdateEvent)
         self.matching.set_dirty_callback(self.getMatchingDirtyEvent)
-        self.canvas.setMatching(self.matching)
-        self.viewIWidget.update_all()
-        self.viewJWidget.update_all()
-        self.pairWidget.update_all()
-        if 0 < len(self.matching.get_pairs()):
-            view_id_i = self.matching.get_pairs()[0]['id_view_i']
-            view_id_j = self.matching.get_pairs()[0]['id_view_j']
-        else:
-            view_id_i = self.matching.get_views()[0]['id_view']
-            view_id_j = self.matching.get_views()[1]['id_view']
+        self.viewIWidget.initialize()
+        self.viewJWidget.initialize()
+        view_id_i = self.matching.get_list_of_view_id()[0]
+        view_id_j = self.matching.get_list_of_view_id()[1]
         self.changePair(view_id_i, view_id_j)
-        self.actions.saveFileAs.setEnabled(True)
-        self.actions.inspection.requireInspection()
+        self.actions.export.setEnabled(True)
 
-    def viewIitemClicked(self, item=None):
-        view_id_i = self.matching.get_view_id_by_view_idx(self.viewIWidget.get_current_idx())
-        view_id_j = self.matching.get_view_id_by_view_idx(self.viewJWidget.get_current_idx())
+    def viewitemClicked(self, item=None):
+        view_id_i = self.matching.get_list_of_view_id()[self.viewIWidget.get_current_idx()]
+        view_id_j = self.matching.get_list_of_view_id()[self.viewJWidget.get_current_idx()]
         self.changePair(view_id_i, view_id_j)
-
-    def viewJitemClicked(self, item=None):
-        id_view_i = self.matching.get_view_id_by_view_idx(self.viewIWidget.get_current_idx())
-        id_view_j = self.matching.get_view_id_by_view_idx(self.viewJWidget.get_current_idx())
-        self.changePair(id_view_i, id_view_j)
-
-    def pairitemClicked(self, item=None):
-        idx = self.pairWidget.get_current_idx()
-        if idx < len(self.matching.get_pairs()):
-            view_id_i = self.matching.get_pairs()[idx]['id_view_i']
-            view_id_j = self.matching.get_pairs()[idx]['id_view_j']
-            self.changePair(view_id_i, view_id_j)
 
     def changePair(self, view_id_i, view_id_j):
-        if len(self.matching.get_pairs()) < self.pairWidget.count():
-            self.pairWidget.remove_last_item()
-        pair_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
-        if pair_idx is not None:
-            self.pairWidget.set_current_idx(pair_idx)
-            self.actions.addPair.setEnabled(False)
-            self.actions.removePair.setEnabled(True)
-            self.actions.openNextPair.setEnabled(True)
-            self.actions.openPrevPair.setEnabled(True)
-        else:
-            self.pairWidget.add_item('None ({}, {})'.format(view_id_i, view_id_j))
-            self.pairWidget.set_current_idx(self.pairWidget.count()-1)
-            self.actions.addPair.setEnabled(True)
-            self.actions.removePair.setEnabled(False)
-            self.actions.openNextPair.setEnabled(False)
-            self.actions.openPrevPair.setEnabled(False)
+        view_idx_i = self.matching.find_view_idx(view_id_i)
+        view_idx_j = self.matching.find_view_idx(view_id_j)
         self.matching.set_view(view_id_i, view_id_j)
-        self.viewIWidget.set_current_idx(self.matching.get_view_idx_i())
-        self.viewJWidget.set_current_idx(self.matching.get_view_idx_j())
+        self.viewIWidget.set_current_idx(view_idx_i)
+        self.viewJWidget.set_current_idx(view_idx_j)
+        self.viewJWidget.update_text()
         self.canvas.updatePixmap()
         self.canvas.repaint()
         if self.actions.autoSaving.isChecked():
             if self.matching.dirty():
                 self.matching.save(self.savePath)
-                self.actions.saveFile.setEnabled(False)
+                self.actions.save.setEnabled(False)
 
     def resizeEvent(self, event):
         super(MainWindow, self).resizeEvent(event)
@@ -218,26 +165,18 @@ class MainWindow(QMainWindow, WindowMixin):
         self.actions.inspection.terminate_thread()
 
     def getMatchingUpdateEvent(self):
-        view_id_i = self.matching.get_view_id_i()
-        view_id_j = self.matching.get_view_id_j()
-        view_idx_i = self.matching.get_view_idx_i()
-        view_idx_j = self.matching.get_view_idx_j()
-        self.viewIWidget.update_item_by_idx([view_idx_i, view_idx_j])
-        self.viewJWidget.update_item_by_idx([view_idx_i, view_idx_j])
-        pair_idx = self.matching.find_pair_idx(view_id_i, view_id_j)
-        if pair_idx is not None:
-            self.pairWidget.update_item_by_idx(self.matching, pair_idx)
-        self.actions.inspection.requireInspection()
+        self.viewIWidget.update_text()
+        self.viewJWidget.update_text()
 
     def getMatchingDirtyEvent(self):
         if not self.actions.autoSaving.isChecked():
-            self.actions.saveFile.setEnabled(True)
+            self.actions.save.setEnabled(True)
 
     def updateTitle(self):
-        if self.savePath is None:
+        if self.annotDir is None:
             self.setWindowTitle(__appname__)
         else:
-            self.setWindowTitle('{} [{}]'.format(__appname__, self.savePath))
+            self.setWindowTitle('{} [{}]'.format(__appname__, self.annotDir))
 
     def mayContinue(self):
         Yes = QMessageBox.Yes

@@ -5,20 +5,20 @@ from PyQt5.QtWidgets import QFileDialog
 from PointMatcher.utils.filesystem import icon_path
 
 
-class SaveFileAsAction(QAction):
+class ExportAction(QAction):
 
     def __init__(self, parent):
-        super(SaveFileAsAction, self).__init__('Save File As', parent)
+        super(ExportAction, self).__init__('Export', parent)
         self.p = parent
 
         self.setIcon(QIcon(icon_path('save')))
         self.setShortcut('Ctrl+Alt+S')
-        self.triggered.connect(self.saveFileAs)
+        self.triggered.connect(self.export)
         self.setEnabled(False)
 
-    def saveFileAs(self, _value=False):
-        if (self.p.savePath is not None) and osp.exists(osp.dirname(self.p.savePath)):
-            path = osp.dirname(self.p.savePath)
+    def export(self, _value=False):
+        if (self.p.annotDir is not None) and osp.exists(self.p.annotDir):
+            path = self.p.annotDir
         elif (self.p.imageDir is not None) and osp.exists(self.p.imageDir):
             path = self.p.imageDir
         else:
@@ -29,6 +29,4 @@ class SaveFileAsAction(QAction):
         if filename:
             if isinstance(filename, (tuple, list)):
                 filename = filename[0]
-            self.p.savePath = filename
-            self.p.matching.save(self.p.savePath)
-            self.p.updateTitle()
+            raise NotImplementedError()

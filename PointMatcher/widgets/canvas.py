@@ -1,6 +1,7 @@
 import os
 import os.path as osp
 import numpy as np
+import cv2
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -23,10 +24,10 @@ class Canvas(QWidget):
 
     epsilon = 32.0
 
-    def __init__(self, *args, **kwargs):
-        super(Canvas, self).__init__(*args, **kwargs)
+    def __init__(self, parent):
+        super(Canvas, self).__init__(parent=parent)
+        self.p = parent
         self.mode = self.MODE_EDIT_KEYPOINT
-        self.matching = None
         self.img_i_w = None
         self.img_i_h = None
         self.img_j_w = None
@@ -64,41 +65,41 @@ class Canvas(QWidget):
 
         if self.mode == self.MODE_EDIT_KEYPOINT:
             if Qt.LeftButton & ev.buttons():
-                if posInViewI and self.matching.selected_idx_i is not None:
-                    self.matching.set_keypoint_pos_in_view_i(
-                        self.matching.selected_idx_i, posInViewI[0], posInViewI[1])
-                if posInViewJ and self.matching.selected_idx_j is not None:
-                    self.matching.set_keypoint_pos_in_view_j(
-                        self.matching.selected_idx_j, posInViewJ[0], posInViewJ[1])
+                if posInViewI and self.p.matching.selected_id_i is not None:
+                    self.p.matching.set_keypoint_pos_in_view_i(
+                        self.p.matching.selected_id_i, posInViewI[0], posInViewI[1])
+                if posInViewJ and self.p.matching.selected_id_j is not None:
+                    self.p.matching.set_keypoint_pos_in_view_j(
+                        self.p.matching.selected_id_j, posInViewJ[0], posInViewJ[1])
             else:
-                if posInViewI and not self.matching.empty_i():
-                    val, idx = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
+                if posInViewI and not self.p.matching.empty_i():
+                    val, kid = self.p.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
                     if val < self.epsilon / self.scale:
-                        self.matching.highlighted_idx_i = idx
+                        self.p.matching.highlighted_id_i = kid
                     else:
-                        self.matching.highlighted_idx_i = None
-                if posInViewJ and not self.matching.empty_j():
-                    val, idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
+                        self.p.matching.highlighted_idx_i = None
+                if posInViewJ and not self.p.matching.empty_j():
+                    val, kid = self.p.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
                     if val < self.epsilon / self.scale:
-                        self.matching.highlighted_idx_j = idx
+                        self.p.matching.highlighted_idx_j = kid
                     else:
-                        self.matching.highlighted_idx_j = None
+                        self.p.matching.highlighted_idx_j = None
 
         if self.mode == self.MODE_EDIT_MATCH:
-            if posInViewI and not self.matching.empty_i():
-                val, idx = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
-                if val < self.epsilon / self.scale and self.matching.selected_idx_i != idx:
-                    self.matching.highlighted_idx_i = idx
+            if posInViewI and not self.p.matching.empty_i():
+                val, kid = self.p.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
+                if val < self.epsilon / self.scale and self.p.matching.selected_id_i != kid:
+                    self.p.matching.highlighted_id_i = kid
                 else:
-                    self.matching.highlighted_idx_i = None
-                    self.matching.highlighted_idx_j = None
-            if posInViewJ and not self.matching.empty_j():
-                val, idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
-                if val < self.epsilon / self.scale and self.matching.selected_idx_j != idx:
-                    self.matching.highlighted_idx_j = idx
+                    self.p.matching.highlighted_id_i = None
+                    self.p.matching.highlighted_id_j = None
+            if posInViewJ and not self.p.matching.empty_j():
+                val, kid = self.p.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
+                if val < self.epsilon / self.scale and self.p.matching.selected_id_j != kid:
+                    self.p.matching.highlighted_id_j = kid
                 else:
-                    self.matching.highlighted_idx_i = None
-                    self.matching.highlighted_idx_j = None
+                    self.p.matching.highlighted_id_i = None
+                    self.p.matching.highlighted_id_j = None
 
         self.update()
 
@@ -110,71 +111,63 @@ class Canvas(QWidget):
         if self.mode == self.MODE_EDIT_KEYPOINT:
             if ev.button() == Qt.LeftButton:
                 if posInViewI:
-                    ret = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
+                    ret = self.p.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
                     if (ret is not None) and \
-                            (ret[0] < self.epsilon / self.scale and self.matching.selected_idx_i != ret[1]):
-                        self.matching.selected_idx_i = ret[1]
-                        self.matching.highlighted_idx_i = None
+                            (ret[0] < self.epsilon / self.scale and self.p.matching.selected_id_i != ret[1]):
+                        self.p.matching.selected_id_i = ret[1]
+                        self.p.matching.highlighted_id_i = None
                     else:
-                        self.matching.append_keypoint_in_view_i(posInViewI[0], posInViewI[1])
+                        self.p.matching.append_keypoint_in_view_i(posInViewI[0], posInViewI[1])
                 if posInViewJ:
-                    ret = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
+                    ret = self.p.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
                     if (ret is not None) and \
-                            (ret[0] < self.epsilon / self.scale and self.matching.selected_idx_j != ret[1]):
-                        self.matching.selected_idx_j = ret[1]
-                        self.matching.highlighted_idx_j = None
+                            (ret[0] < self.epsilon / self.scale and self.p.matching.selected_id_j != ret[1]):
+                        self.p.matching.selected_id_j = ret[1]
+                        self.p.matching.highlighted_id_j = None
                     else:
-                        self.matching.append_keypoint_in_view_j(posInViewJ[0], posInViewJ[1])
+                        self.p.matching.append_keypoint_in_view_j(posInViewJ[0], posInViewJ[1])
 
         if self.mode == self.MODE_EDIT_MATCH:
             if ev.button() == Qt.LeftButton:
-                if posInViewI and (not self.matching.empty_i()):
-                    val, idx = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
+                if posInViewI and (not self.p.matching.empty_i()):
+                    val, kid = self.p.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
                     nearby = val < self.epsilon / self.scale
-                    if nearby and (self.matching.selected_idx_j is not None):
-                        # if self.matching.get_pair_idx() is None:
-                        #     self.parent().addPair()
+                    if nearby and (self.p.matching.selected_id_j is not None):
                         try:
-                            self.matching.append_match(
-                                idx,
-                                self.matching.selected_idx_j)
-                            self.matching.clear_decoration()
+                            self.p.matching.append_match(kid, self.p.matching.selected_id_j)
+                            self.p.matching.clear_decoration()
                         except RuntimeWarning as e:
                             QMessageBox.warning(self, 'Attention', '{}'.format(e), QMessageBox.Ok)
-                    elif nearby and (self.matching.selected_idx_j is None) and (self.matching.selected_idx_i != idx):
-                        self.matching.selected_idx_i = idx
-                        self.matching.highlighted_idx_i = None
-                    elif nearby and (self.matching.selected_idx_j is None) and (self.matching.selected_idx_i == idx):
-                        self.matching.clear_decoration()
-                if posInViewJ and (not self.matching.empty_j()):
-                    val, idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
+                    elif nearby and (self.p.matching.selected_id_j is None) and (self.p.matching.selected_id_i != kid):
+                        self.p.matching.selected_id_i = kid
+                        self.p.matching.highlighted_id_i = None
+                    elif nearby and (self.p.matching.selected_id_j is None) and (self.p.matching.selected_id_i == kid):
+                        self.p.matching.clear_decoration()
+                if posInViewJ and (not self.p.matching.empty_j()):
+                    val, kid = self.p.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
                     nearby = val < self.epsilon / self.scale
-                    if nearby and (self.matching.selected_idx_i is not None):
-                        # if self.matching.get_pair_idx() is None:
-                        #     self.parent().addPair()
+                    if nearby and (self.p.matching.selected_id_i is not None):
                         try:
-                            self.matching.append_match(
-                                self.matching.selected_idx_i,
-                                idx)
-                            self.matching.clear_decoration()
+                            self.p.matching.append_match(self.p.matching.selected_id_i, kid)
+                            self.p.matching.clear_decoration()
                         except RuntimeWarning as e:
                             QMessageBox.warning(self, 'Attention', '{}'.format(e), QMessageBox.Ok)
-                    elif nearby and (self.matching.selected_idx_i is None) and (self.matching.selected_idx_j != idx):
-                        self.matching.selected_idx_j = idx
-                        self.matching.highlighted_idx_j = None
-                    elif nearby and (self.matching.selected_idx_i is None) and (self.matching.selected_idx_j == idx):
-                        self.matching.clear_decoration()
+                    elif nearby and (self.p.matching.selected_id_i is None) and (self.p.matching.selected_id_j != kid):
+                        self.p.matching.selected_id_j = kid
+                        self.p.matching.highlighted_id_j = None
+                    elif nearby and (self.p.matching.selected_id_i is None) and (self.p.matching.selected_id_j == kid):
+                        self.p.matching.clear_decoration()
 
         self.update()
 
     def mouseReleaseEvent(self, ev):
-        if self.matching is None:
+        if self.p.matching is None:
             return
 
         if self.mode == self.MODE_EDIT_KEYPOINT:
             if ev.button() == Qt.LeftButton:
-                self.matching.selected_idx_i = None
-                self.matching.selected_idx_j = None
+                self.p.matching.selected_id_i = None
+                self.p.matching.selected_id_j = None
 
         self.update()
 
@@ -184,43 +177,36 @@ class Canvas(QWidget):
         posInViewJ = self.GetPosInViewJ(pos.x(), pos.y())
 
         if self.mode == self.MODE_EDIT_KEYPOINT:
-            if posInViewI and not self.matching.empty_i():
-                val, idx = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
+            if posInViewI and not self.p.matching.empty_i():
+                val, kid = self.p.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
                 if val < self.epsilon / self.scale:
-                    self.matching.remove_keypoint_in_view_i(idx)
-            if posInViewJ and not self.matching.empty_j():
-                val, idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
+                    self.p.matching.remove_keypoint_in_view_i(kid)
+            if posInViewJ and not self.p.matching.empty_j():
+                val, kid = self.p.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
                 if val < self.epsilon / self.scale:
-                    self.matching.remove_keypoint_in_view_j(idx)
+                    self.p.matching.remove_keypoint_in_view_j(kid)
 
         if self.mode == self.MODE_EDIT_MATCH:
             if posInViewI:
-                val, keypoint_idx = self.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
+                val, kid = self.p.matching.min_distance_in_view_i(posInViewI[0], posInViewI[1])
                 if val < self.epsilon / self.scale:
-                    match_idx = self.matching.find_match_idx_in_view_i(keypoint_idx)
-                    if match_idx is not None:
-                        self.matching.remove_match(match_idx)
+                    self.p.matching.remove_match_in_view_i(kid)
             if posInViewJ:
-                val, keypoint_idx = self.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
+                val, kid = self.p.matching.min_distance_in_view_j(posInViewJ[0], posInViewJ[1])
                 if val < self.epsilon / self.scale:
-                    match_idx = self.matching.find_match_idx_in_view_j(keypoint_idx)
-                    if match_idx is not None:
-                        self.matching.remove_match(match_idx)
+                    self.p.matching.remove_match_in_view_j(kid)
 
         self.update()
 
-    def setMatching(self, matching):
-        self.matching = matching
-
     def setEditKeypointMode(self):
         self.mode = self.MODE_EDIT_KEYPOINT
-        if self.matching:
-            self.matching.clear_decoration()
+        if self.p.matching:
+            self.p.matching.clear_decoration()
 
     def setEditMatchMode(self):
         self.mode = self.MODE_EDIT_MATCH
-        if self.matching:
-            self.matching.clear_decoration()
+        if self.p.matching:
+            self.p.matching.clear_decoration()
 
     def GetPosInViewI(self, x, y):
         if all([self.img_i_w, self.img_i_h, self.img_j_w, self.img_j_h]):
@@ -235,8 +221,8 @@ class Canvas(QWidget):
         return None
 
     def updatePixmap(self):
-        img_i = self.matching.get_img_i()
-        img_j = self.matching.get_img_j()
+        img_i = cv2.imread(osp.join(self.p.imageDir, self.p.matching.get_filename(self.p.matching.get_view_id_i())))
+        img_j = cv2.imread(osp.join(self.p.imageDir, self.p.matching.get_filename(self.p.matching.get_view_id_j())))
         self.img_i_h, self.img_i_w, _ = img_i.shape
         self.img_j_h, self.img_j_w, _ = img_j.shape
         img_h = self.img_i_h + self.img_j_h
@@ -266,8 +252,8 @@ class Canvas(QWidget):
 
         p.drawPixmap(0, 0, self.pixmap)
 
-        if self.matching:
-            self.mp.paint(p, self.matching, self.scale)
+        if self.p.matching is not None:
+            self.mp.paint(p, self.p.matching, self.scale)
 
         self.setAutoFillBackground(True)
         pal = self.palette()

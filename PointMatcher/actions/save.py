@@ -4,18 +4,17 @@ from PyQt5.QtWidgets import QAction
 from PointMatcher.utils.filesystem import icon_path
 
 
-class SaveFileAction(QAction):
+class SaveAction(QAction):
 
     def __init__(self, parent):
-        super(SaveFileAction, self).__init__('Save File', parent)
+        super(SaveAction, self).__init__('Save', parent)
         self.p = parent
 
         self.setIcon(QIcon(icon_path('save')))
         self.setShortcut('Ctrl+S')
-        self.triggered.connect(self.saveFile)
+        self.triggered.connect(self.save)
         self.setEnabled(False)
 
-    def saveFile(self, _value=False):
-        if self.p.savePath:
-            self.p.matching.save(self.p.savePath)
-            self.p.actions.saveFile.setEnabled(False)
+    def save(self, _value=False):
+        self.p.matching.save()
+        self.p.actions.save.setEnabled(False)

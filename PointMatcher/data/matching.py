@@ -1,331 +1,418 @@
 import os
 import os.path as osp
-from functools import cmp_to_key
 import copy
+from functools import cmp_to_key
+from collections import Counter
+from collections import OrderedDict
 import json
-import pickle
-import cv2
-from PointMatcher.data.op import get_adjacencies
+from glob import glob
 
 
 class Matching:
 
-    def __init__(self, data=None, image_dir=None):
+    def __init__(self, annot_dir):
+        self.annot_dir = annot_dir
+        self._groups = None
+        self._group_id_to_idx = None
+        self._viewlist = None
+        self._matchcounter = None
+        self._view_i = None
+        self._view_j = None
+        self._matches = None
 
-        if type(data) is dict:
-            self.data = copy.deepcopy(data)
-        elif type(data) is Matching:
-            self.data = copy.deepcopy(data.data)
-        elif type(data) is str:
-            ext = osp.splitext(data)[1]
-            if ext == '.json':
-                with open(data, 'r') as f:
-                    self.data = json.load(f)
-            elif ext == '.pkl':
-                with open(data, 'rb') as f:
-                    self.data = pickle.load(f)
-            else:
-                raise RuntimeError('invalid filename ({})'.format(data))
-        else:
-            self.data = None
-        self.image_dir = image_dir
+        self.load_groups()
+        self.load_viewlist()
+        self.initialize_matchcounter()
+        self.set_view(self.get_list_of_view_id()[0], self.get_list_of_view_id()[1])
 
-        self.highlighted_idx_i = None
-        self.highlighted_idx_j = None
-        self.selected_idx_i = None
-        self.selected_idx_j = None
-
-        self._view_id_i = None
-        self._view_id_j = None
-        self._view_idx_i = None
-        self._view_idx_j = None
-        self._pair_idx = None
+        self.highlighted_id_i = None
+        self.highlighted_id_j = None
+        self.selected_id_i = None
+        self.selected_id_j = None
 
         self._update_callback = None
 
         self._dirty = False
+        self._dirty_groups = False
+        self._dirty_views = {}
         self._dirty_callback = None
 
-    def get_views(self):
-        return self.data['views']
+    def load_groups(self):
+        with open(self.get_groups_path(), 'r') as f:
+            self._groups = json.load(f)
+        self._group_id_to_idx = {}
+        for idx, group in enumerate(self._groups['groups']):
+            self._group_id_to_idx[group['id']] = idx
 
-    def get_pairs(self):
-        return self.data['pairs']
+    def load_viewlist(self):
+        view_paths = glob(osp.join(self.get_views_dir(), '*.json'))
+        self._viewlist = OrderedDict()
+        for view_path in view_paths:
+            with open(view_path, 'r') as f:
+                v = json.load(f)
+            self._viewlist[v['id']] = {
+                'view_path': view_path,
+                'filename': osp.join(*v['filename']),
+                'keypoint_count': len(v['keypoints'])}
+        self._viewlist = OrderedDict(sorted(self._viewlist.items(), key=lambda x: x[0]))
 
-    def get_view_i(self):
-        return self.data['views'][self._view_idx_i]
+    def load_view(self, view_id):
+        with open(self._viewlist[view_id]['view_path'], 'r') as f:
+            x = json.load(f)
+        return x
 
-    def get_view_j(self):
-        return self.data['views'][self._view_idx_j]
+    def initialize_matchcounter(self):
+        self._matchcounter = {}
+        for group in self._groups['groups']:
+            for i in range(0, len(group['keypoints'])):
+                for j in range(i + 1, len(group['keypoints'])):
+                    view_id_i = group['keypoints'][i][0]
+                    view_id_j = group['keypoints'][j][0]
+                    self.increment_matchcounter(view_id_i, view_id_j)
+                    self.increment_matchcounter(view_id_j, view_id_i)
 
-    def get_pair(self):
-        return self.data['pairs'][self._pair_idx]
-
-    def get_view_id_i(self):
-        return self._view_id_i
-
-    def get_view_id_j(self):
-        return self._view_id_j
-
-    def get_view_idx_i(self):
-        return self._view_idx_i
-
-    def get_view_idx_j(self):
-        return self._view_idx_j
-
-    def get_pair_idx(self):
-        return self._pair_idx
-
-    def get_view_id_by_view_idx(self, idx):
-        return self.data['views'][idx]['id_view']
-
-    def get_view_id_i_by_pair_idx(self, idx):
-        return self.data['pairs'][idx]['id_view_i']
-
-    def get_view_id_j_by_pair_idx(self, idx):
-        return self.data['pairs'][idx]['id_view_j']
-
-    def get_keypoints_count(self, view_id):
-        view_idx = self.find_view_idx(view_id)
-        if view_idx is None:
-            return len(self.data['views'][view_idx]['keypoints'])
+    def increment_matchcounter(self, view_id_i, view_id_j):
+        if view_id_i not in self._matchcounter:
+            self._matchcounter[view_id_i] = {view_id_j: 0}
+        elif view_id_j not in self._matchcounter[view_id_i]:
+            self._matchcounter[view_id_i][view_id_j] = 1
         else:
-            return None
+            self._matchcounter[view_id_i][view_id_j] += 1
 
-    def get_matches_count(self, view_id_i, view_id_j):
-        pair_idx = self.find_pair_idx(view_id_i, view_id_j)
-        if pair_idx is not None:
-            return len(self.data['pairs'][pair_idx]['matches'])
-        else:
-            return None
-
-    def get_img_i(self):
-        return cv2.imread(osp.join(self.image_dir, osp.join(*self.data['views'][self._view_idx_i]['filename'])))
-
-    def get_img_j(self):
-        return cv2.imread(osp.join(self.image_dir, osp.join(*self.data['views'][self._view_idx_j]['filename'])))
-
-    def get_next_view_pair(self):
-        if self._pair_idx is None:
-            raise RuntimeError('view pair is not set.')
-        match_idx = min(len(self.data['pairs']) - 1, self._pair_idx + 1)
-        view_id_i = self.data['pairs'][match_idx]['id_view_i']
-        view_id_j = self.data['pairs'][match_idx]['id_view_j']
-        return view_id_i, view_id_j
-
-    def get_prev_view_pair(self):
-        if self._pair_idx is None:
-            raise RuntimeError('view pair is not set.')
-        match_idx = max(0, self._pair_idx - 1)
-        view_id_i = self.data['pairs'][match_idx]['id_view_i']
-        view_id_j = self.data['pairs'][match_idx]['id_view_j']
-        return view_id_i, view_id_j
+    def decrement_matchcounter(self, view_id_i, view_id_j):
+        self._matchcounter[view_id_i][view_id_j] -= 1
 
     def set_view(self, view_id_i, view_id_j):
-        self._view_id_i = view_id_i
-        self._view_id_j = view_id_j
-        self._view_idx_i = self.find_view_idx(view_id_i)
-        self._view_idx_j = self.find_view_idx(view_id_j)
-        self._pair_idx = self.find_pair_idx(view_id_i, view_id_j)
+        self._view_i = self.load_view(view_id_i)
+        self._view_j = self.load_view(view_id_j)
+        self._matches = OrderedDict()
+        for keypoint in self._view_i['keypoints']:
+            kid = keypoint['id']
+            gid = keypoint['group_id']
+            if gid is not None:
+                self._matches[gid] = [kid, None]
+        for keypoint in self._view_j['keypoints']:
+            kid = keypoint['id']
+            gid = keypoint['group_id']
+            if gid is not None:
+                if gid in self._matches:
+                    self._matches[gid][1] = kid
+                else:
+                    self._matches[gid] = [None, kid]
 
-    def set_keypoint_pos_in_view_i(self, idx, x, y):
-        self.data['views'][self._view_idx_i]['keypoints'][idx] = [x, y]
+    def get_views_dir(self):
+        return osp.join(self.annot_dir, 'views')
+
+    def get_groups_path(self):
+        return osp.join(self.annot_dir, 'groups.json')
+
+    def get_view_id_i(self):
+        return self._view_i['id']
+
+    def get_view_id_j(self):
+        return self._view_j['id']
+
+    def get_keypoints_i(self):
+        return self._view_i['keypoints']
+
+    def get_keypoints_j(self):
+        return self._view_j['keypoints']
+
+    def get_matches(self):
+        return self._matches
+
+    def get_filename(self, view_id):
+        return self._viewlist[view_id]['filename']
+
+    def get_keypoint_count(self, view_id):
+        return self._viewlist[view_id]['keypoint_count']
+
+    def get_match_count(self, view_id_i, view_id_j):
+        if (view_id_i in self._matchcounter) and (view_id_j in self._matchcounter[view_id_i]):
+            return self._matchcounter[view_id_i][view_id_j]
+
+    def get_pair_count(self, view_id):
+        if view_id in self._matchcounter:
+            return len(self._matchcounter[view_id])
+        else:
+            return 0
+
+    def get_view_count(self):
+        return len(self._viewlist)
+
+    def get_list_of_view_id(self):
+        return list(self._viewlist.keys())
+
+    def get_next_view(self, view_id):
+        view_idx = self.find_view_idx(view_id)
+        view_idx = min(view_idx + 1, self.get_view_count() - 1)
+        return self.get_list_of_view_id()[view_idx]
+
+    def get_prev_view(self, view_id):
+        view_idx = self.find_view_idx(view_id)
+        view_idx = max(view_idx - 1, 0)
+        return self.get_list_of_view_id()[view_idx]
+
+    def set_keypoint_pos_in_view_i(self, keypoint_id, x, y):
+        kidx = self.find_keypoint_idx(self.get_keypoints_i(), keypoint_id)
+        self._view_i['keypoints'][kidx]['pos'] = [x, y]
+        self._dirty_views[self._view_i['id']] = self._view_i
         self.set_update()
         self.set_dirty()
 
-    def set_keypoint_pos_in_view_j(self, idx, x, y):
-        self.data['views'][self._view_idx_j]['keypoints'][idx] = [x, y]
+    def set_keypoint_pos_in_view_j(self, keypoint_id, x, y):
+        kidx = self.find_keypoint_idx(self.get_keypoints_j(), keypoint_id)
+        self._view_j['keypoints'][kidx]['pos'] = [x, y]
+        self._dirty_views[self._view_i['id']] = self._view_j
         self.set_update()
         self.set_dirty()
-
-    def update_adjacencies(self):
-        adjacencies = get_adjacencies(self)
-        for idx in range(len(self.data['views'])):
-            view_id = self.data['views'][idx]['id_view']
-            if view_id in adjacencies:
-                self.data['views'][idx]['adjacencies'] = adjacencies[view_id]
-            else:
-                self.data['views'][idx]['adjacencies'] = []
 
     def append_keypoint_in_view_i(self, x, y):
-        self.data['views'][self._view_idx_i]['keypoints'].append([x, y])
+        if self.empty_i():
+            new_id = 0
+        else:
+            new_id = self._view_i['keypoints'][-1]['id'] + 1
+        self._view_i['keypoints'].append({
+            'id': new_id,
+            'pos': [x, y],
+            'group_id': None})
         self.set_update()
         self.set_dirty()
 
     def append_keypoint_in_view_j(self, x, y):
-        self.data['views'][self._view_idx_j]['keypoints'].append([x, y])
+        if self.empty_j():
+            new_id = 0
+        else:
+            new_id = self._view_j['keypoints'][-1]['id'] + 1
+        self._view_j['keypoints'].append({
+            'id': new_id,
+            'pos': [x, y],
+            'group_id': None})
         self.set_update()
         self.set_dirty()
 
-    def append_pair(self, view_id_i, view_id_j, update=True):
-        view_idx_i = self.find_view_idx(view_id_i)
-        view_idx_j = self.find_view_idx(view_id_j)
-        if view_idx_i is None or view_idx_j is None:
-            raise RuntimeError('invalid view_id')
-        idx = self.find_pair_idx(view_id_i, view_id_j)
-        if idx is None:
-            self.data['pairs'].append({
-                'id_view_i': view_id_i,
-                'id_view_j': view_id_j,
-                'matches': []})
-            self.data['views'][view_idx_i]['adjacencies'].append(view_id_j)
-            self.data['views'][view_idx_j]['adjacencies'].append(view_id_i)
+    def append_match(self, keypoint_id_i, keypoint_id_j, update=True):
+        kid_i = keypoint_id_i
+        kid_j = keypoint_id_j
+        kidx_i = self.find_keypoint_idx(self.get_keypoints_i(), kid_i)
+        kidx_j = self.find_keypoint_idx(self.get_keypoints_j(), kid_j)
+        gid_i = self._view_i['keypoints'][kidx_i]['group_id']
+        gid_j = self._view_j['keypoints'][kidx_j]['group_id']
+        vid_i = self.get_view_id_i()
+        vid_j = self.get_view_id_j()
+        if vid_i == vid_j:
+            raise RuntimeWarning('same views')
+        if len(self._groups['groups']) == 0:
+            new_group_id = 0
+        else:
+            new_group_id = self._groups['groups'][-1]['id'] + 1
+        if (gid_i is None) and (gid_j is None):
+            self._groups['groups'].append({
+                'id': new_group_id,
+                'keypoints': [(vid_i, kid_i), (vid_j, kid_j)]})
+            self._view_i['keypoints'][kidx_i]['group_id'] = new_group_id
+            self._view_j['keypoints'][kidx_j]['group_id'] = new_group_id
+            self._matches[new_group_id] = [kid_i, kid_j]
+            self._dirty_groups = True
+            self._dirty_views[vid_i] = self._view_i
+            self._dirty_views[vid_j] = self._view_j
+            self.increment_matchcounter(vid_i, vid_j)
+            self.increment_matchcounter(vid_j, vid_i)
             if update:
                 self.set_update()
             self.set_dirty()
-            return len(self.data['pairs']) - 1
-        else:
-            return idx
-
-    def append_match(self, keypoint_idx_i, keypoint_idx_j, pair_idx=None, raise_exception=True, update=True):
-        if pair_idx is None:
-            pair_idx = self._pair_idx
-        if pair_idx is not None:
-            arr = [match[0] == keypoint_idx_i or match[1] == keypoint_idx_j
-                   for match in self.data['pairs'][pair_idx]['matches']]
-            if any(arr):
-                if raise_exception:
-                    raise RuntimeWarning('this keypoints are assined as a match')
+            return
+        if (gid_i is not None) and (gid_j is None):
+            gks_i = self._groups[self._group_id_to_idx[gid_i]]
+            self._groups['groups'][self._group_id_to_idx[gid_i]]['keypoints'].append((vid_j, kid_j))
+            self._view_j['keypoints'][kidx_j]['group_id'] = gid_i
+            self._matches[gid_i][1] = kid_j
+            self._dirty_groups = True
+            self._dirty_views[vid_j] = self._view_j
+            for gk in gks_i:
+                self.increment_matchcounter(gk[0], vid_j)
+                self.increment_matchcounter(vid_j, gk[0])
+            if update:
+                self.set_update()
+            self.set_dirty()
+            return
+        if (gid_i is None) and (gid_j is not None):
+            gks_j = self._groups[self._group_id_to_idx[gid_j]]
+            self._groups['groups'][self._group_id_to_idx[gid_j]]['keypoints'].append((vid_i, kid_i))
+            self._view_i['keypoints'][kidx_i]['group_id'] = gid_j
+            self._matches[gid_j][1] = kid_j
+            self._dirty_groups = True
+            self._dirty_views[vid_i] = self._view_i
+            for gk in gks_j:
+                self.increment_matchcounter(vid_i, gk[0])
+                self.increment_matchcounter(gk[0], vid_i)
+            if update:
+                self.set_update()
+            self.set_dirty()
+            return True
+        if (gid_i is not None) and (gid_j is not None):
+            gks_i = self._groups[self._group_id_to_idx[gid_i]]
+            gks_j = self._groups[self._group_id_to_idx[gid_j]]
+            all_keypoints = self._groups[self._group_id_to_idx[gid_i]]['keypoints']
+            all_keypoints += self._groups[self._group_id_to_idx[gid_j]]['keypoints']
+            all_vids = [keypoint[0] for keypoint in all_keypoints]
+            if any([count > 1 for item, count in Counter(all_vids).items()]):
+                return False
+            del self._groups['groups'][self._group_id_to_idx[gid_i]]
+            del self._groups['groups'][self._group_id_to_idx[gid_j]]
+            del self._matches[gid_i]
+            del self._matches[gid_j]
+            self._groups['groups'].append({
+                'id': new_group_id,
+                'keypoints': all_keypoints})
+            self._view_i['keypoints'][kidx_i]['group_id'] = new_group_id
+            self._view_j['keypoints'][kidx_j]['group_id'] = new_group_id
+            self._matches[new_group_id] = [kid_i, kid_j]
+            self._dirty_groups = True
+            self._dirty_views[vid_i] = self._view_i
+            self._dirty_views[vid_j] = self._view_j
+            for keypoint in all_keypoints:
+                vid = keypoint[0]
+                kid = keypoint[1]
+                if vid in (vid_i, vid_j):
+                    continue
+                if vid in self._dirty_views:
+                    view = self._dirty_views[vid]
                 else:
-                    return
-            self.data['pairs'][pair_idx]['matches'].append([keypoint_idx_i, keypoint_idx_j])
-        else:
-            raise RuntimeWarning('This view pair is not registered.')
-        if update:
-            self.set_update()
-        self.set_dirty()
+                    view = self.load_view(vid)
+                kidx = self.find_keypoint_idx(view['keypoints'], kid)
+                view['keypoints'][kidx]['group_id'] = new_group_id
+                self._dirty_views[vid] = view
+            for gk_i in gks_i:
+                for gk_j in gks_j:
+                    self.increment_matchcounter(gk_i[0], gk_j[0])
+                    self.increment_matchcounter(gk_j[0], gk_i[0])
+            if update:
+                self.set_update()
+            self.set_dirty()
+            return True
+        return False
 
-    def remove_keypoint_in_view_i(self, idx):
-        self.remove_keypoint(self._view_id_i, idx)
-        # update and dirty is called in remove_keypoint
-
-    def remove_keypoint_in_view_j(self, idx):
-        self.remove_keypoint(self._view_id_j, idx)
-        # update and dirty is called in remove_keypoint
-
-    def remove_keypoint(self, view_id, idx):
-        view_idx = self.find_view_idx(view_id)
-        keypoints = self.data['views'][view_idx]['keypoints']
-        self.data['views'][view_idx]['keypoints'] = keypoints[:idx] + keypoints[idx+1:]
-        for i in range(len(self.data['pairs'])):
-            if self.data['pairs'][i]['id_view_i'] == view_id:
-                j = 0
-                while j < len(self.data['pairs'][i]['matches']):
-                    if self.data['pairs'][i]['matches'][j][0] == idx:
-                        self.data['pairs'][i]['matches'].pop(j)
-                        continue
-                    if self.data['pairs'][i]['matches'][j][0] > idx:
-                        self.data['pairs'][i]['matches'][j][0] -= 1
-                    j += 1
-            if self.data['pairs'][i]['id_view_j'] == view_id:
-                j = 0
-                while j < len(self.data['pairs'][i]['matches']):
-                    if self.data['pairs'][i]['matches'][j][1] == idx:
-                        self.data['pairs'][i]['matches'].pop(j)
-                        continue
-                    if self.data['pairs'][i]['matches'][j][1] > idx:
-                        self.data['pairs'][i]['matches'][j][1] -= 1
-                    j += 1
-
+    def remove_keypoint_in_view_i(self, keypoint_id):
+        vid = self.get_view_id_i()
+        kid = keypoint_id
+        kidx = self.find_keypoint_idx(self.get_keypoints_i(), kid)
+        gid = self._view_i['keypoints'][kidx]['group_id']
+        if gid is not None:
+            self._groups[gid].remove((vid, kid))
+            self._dirty_groups = True
+            if self._matches[gid][1] is None:
+                del self._matches[gid]
+            else:
+                self._matches[gid][0] = None
+        del self._view_i['keypoints'][kidx]
+        self._dirty_views[vid] = self._view_i
         self.set_update()
         self.set_dirty()
 
-    def remove_pair(self, view_id_i, view_id_j):
-        if (view_id_i, view_id_j) == (self._view_id_i, self._view_id_j):
-            raise RuntimeError('invelid view_id_i and view_id_j')
-        idx = self.find_pair_idx(view_id_i, view_id_j)
-        if idx is not None:
-            self.data['pairs'].pop(idx)
-            self.set_view(self._view_id_i, self._view_id_j)
+    def remove_keypoint_in_view_j(self, keypoint_id):
+        vid = self.get_view_id_j()
+        kid = keypoint_id
+        kidx = self.find_keypoint_idx(self.get_keypoints_j(), kid)
+        gid = self._view_j['keypoints'][kidx]['group_id']
+        if gid is not None:
+            self._groups[gid].remove((vid, kid))
+            self._dirty_groups = True
+            if self._matches[gid][1] is None:
+                del self._matches[gid]
+            else:
+                self._matches[gid][0] = None
+        del self._view_i['keypoints'][kidx]
+        self._dirty_views[vid] = self._view_i
+        self.set_update()
+        self.set_dirty()
+
+    def remove_match_in_view_i(self, keypoint_id):
+        vid = self.get_view_id_i()
+        kid = keypoint_id
+        kidx = self.find_keypoint_idx(self.get_keypoints_i(), kid)
+        gid = self._view_i['keypoints'][kidx]['group_id']
+        if gid is not None:
+            self._groups[gid].remove((vid, kid))
+            self._dirty_groups = True
+            if self._matches[gid][1] is None:
+                del self._matches[gid]
+            else:
+                self._matches[gid][0] = None
+            self._view_i['keypoints'][kidx]['group_id'] = None
+            self._dirty_views[vid] = self._view_i
             self.set_update()
             self.set_dirty()
 
-    def remove_match(self, match_idx):
-        if self._pair_idx is None:
-            raise RuntimeError('runtime error at remove_match')
-        self.data['pairs'][self._pair_idx]['matches'].pop(match_idx)
-        self.set_update()
-        self.set_dirty()
+    def remove_match_in_view_j(self, keypoint_id):
+        vid = self.get_view_id_j()
+        kid = keypoint_id
+        kidx = self.find_keypoint_idx(self.get_keypoints_j(), kid)
+        gid = self._view_j['keypoints'][kidx]['group_id']
+        if gid is not None:
+            self._groups[gid].remove((vid, kid))
+            self._dirty_groups = True
+            if self._matches[gid][1] is None:
+                del self._matches[gid]
+            else:
+                self._matches[gid][0] = None
+            self._view_j['keypoints'][kidx]['group_id'] = None
+            self._dirty_views[vid] = self._view_j
+            self.set_update()
+            self.set_dirty()
 
     def empty_i(self):
-        return len(self.data['views'][self._view_idx_i]['keypoints']) == 0
+        return len(self._view_i['keypoints']) == 0
 
     def empty_j(self):
-        return len(self.data['views'][self._view_idx_j]['keypoints']) == 0
-
-    def sort_pairs(self):
-        def comparator(pair_i, pair_j):
-            if pair_i['id_view_i'] > pair_j['id_view_i']:
-                return 1
-            if pair_i['id_view_i'] < pair_j['id_view_i']:
-                return -1
-            if pair_i['id_view_j'] > pair_j['id_view_j']:
-                return 1
-            if pair_i['id_view_j'] < pair_j['id_view_j']:
-                return -1
-            return 0
-        self.data['pairs'] = sorted(self.data['pairs'], key=cmp_to_key(comparator))
+        return len(self._view_j['keypoints']) == 0
 
     def min_distance_in_view_i(self, x, y):
-        return Matching.min_distance(x, y, self.data['views'][self._view_idx_i]['keypoints'])
+        return Matching.min_distance(x, y, self._view_i['keypoints'])
 
     def min_distance_in_view_j(self, x, y):
-        return Matching.min_distance(x, y, self.data['views'][self._view_idx_j]['keypoints'])
+        return Matching.min_distance(x, y, self._view_j['keypoints'])
+
+    @staticmethod
+    def min_distance(x, y, keypoints):
+        if len(keypoints) == 0:
+            return None
+        distances = [((keypoint['pos'][0] - x)**2 + (keypoint['pos'][1] - y)**2)**(1/2) for keypoint in keypoints]
+        val = min(distances)
+        idx = distances.index(val)
+        return val, keypoints[idx]['id']
 
     def find_view_idx(self, view_id):
-        arr = [v['id_view'] == view_id for v in self.data['views']]
+        arr = [key == view_id for key in self._viewlist.keys()]
         if any(arr):
             return arr.index(True)
         else:
             return None
 
-    def find_pair_idx(self, view_id_i, view_id_j):
-        arr = [m['id_view_i'] == view_id_i and m['id_view_j'] == view_id_j for m in self.data['pairs']]
-        if any(arr):
-            return arr.index(True)
-        else:
-            return None
-
-    def find_match_idx_in_view_i(self, keypoint_idx):
-        if self._pair_idx is None:
-            return None
-        arr = [m[0] == keypoint_idx for m in self.data['pairs'][self._pair_idx]['matches']]
-        if any(arr):
-            return arr.index(True)
-        else:
-            return None
-
-    def find_match_idx_in_view_j(self, keypoint_idx):
-        if self._pair_idx is None:
-            return None
-        arr = [m[1] == keypoint_idx for m in self.data['pairs'][self._pair_idx]['matches']]
+    def find_keypoint_idx(self, keypoints, keypoint_id):
+        arr = [keypoint['id'] == keypoint_id for keypoint in keypoints]
         if any(arr):
             return arr.index(True)
         else:
             return None
 
     def clear_decoration(self):
-        self.highlighted_idx_i = None
-        self.highlighted_idx_j = None
-        self.selected_idx_i = None
-        self.selected_idx_j = None
+        self.highlighted_id_i = None
+        self.highlighted_id_j = None
+        self.selected_id_i = None
+        self.selected_id_j = None
 
     def copy(self):
-        m = Matching(self)
-        return m
+        raise NotImplementedError()
 
-    def save(self, file_path):
-        data = copy.deepcopy(self.data)
+    def save(self):
         self._dirty = False
-        ext = osp.splitext(file_path)[1]
-        if ext == '.json':
-            with open(file_path, 'w') as f:
-                json.dump(data, f)
-        elif ext == '.pkl':
-            with open(file_path, 'wb') as f:
-                pickle.dump(data, f)
-        else:
-            raise RuntimeError('invalid file_path ({})'.format(file_path))
+        if self._dirty_groups:
+            with open(self.get_groups_path(), 'w') as f:
+                json.dump(self._groups, f, indent=4)
+        for v in self._dirty_views:
+            with open(self._viewlist[v['id']]['view_path'], 'w') as f:
+                json.dump(v, f, indent=4)
 
     def set_update(self):
         if self._update_callback:
@@ -345,12 +432,3 @@ class Matching:
 
     def set_dirty_callback(self, f):
         self._dirty_callback = f
-
-    @staticmethod
-    def min_distance(x, y, keypoints):
-        if len(keypoints) == 0:
-            return None
-        distances = [((keypoint[0] - x)**2 + (keypoint[1] - y)**2)**(1/2) for keypoint in keypoints]
-        val = min(distances)
-        idx = distances.index(val)
-        return val, idx

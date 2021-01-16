@@ -5,10 +5,8 @@ from PyQt5.QtGui import QPen
 
 class MatchingPainter:
 
-    keypoint_ok_fill_color = QColor(255, 0, 0, 128)
-    keypoint_ok_highlighted_fill_color = QColor(255, 0, 0, 255)
-    keypoint_ng_fill_color = QColor(255, 255, 0, 128)
-    keypoint_ng_highlighted_fill_color = QColor(255, 255, 0, 255)
+    keypoint_fill_color = QColor(255, 0, 0, 128)
+    keypoint_highlighted_fill_color = QColor(255, 0, 0, 255)
     keypoint_selected_fill_color = QColor(0, 128, 255, 155)
     keypoint_size = 8
     match_line_colors = [
@@ -31,91 +29,72 @@ class MatchingPainter:
         self.draw_offset_i_y = 0
         self.draw_offset_j_x = 0
         self.draw_offset_j_y = 0
-        self._bad_keypoints = None
 
     def paint(self, painter, matching, scale):
-        bad_keypoints_for_view_i = []
-        bad_keypoints_for_view_j = []
-        view_idx_i = matching.get_view_idx_i()
-        view_idx_j = matching.get_view_idx_j()
-        if self._bad_keypoints is not None:
-            if view_idx_i in self._bad_keypoints:
-                bad_keypoints_for_view_i = self._bad_keypoints[view_idx_i]
-            if view_idx_j in self._bad_keypoints:
-                bad_keypoints_for_view_j = self._bad_keypoints[view_idx_j]
-        pen = QPen(self.keypoint_ok_fill_color)
+        keypoints_i = matching.get_keypoints_i()
+        keypoints_j = matching.get_keypoints_j()
+        matches = matching.get_matches()
+
+        pen = QPen(self.keypoint_fill_color)
         pen.setWidth(max(1, int(round(2.0 / scale))))
         painter.setPen(pen)
-        for idx, keypoint in enumerate(matching.get_view_i()['keypoints']):
+        for keypoint in keypoints_i:
+            kid = keypoint['id']
+            pos = keypoint['pos']
             point_path = QPainterPath()
             point_path.addEllipse(
-                keypoint[0] + self.draw_offset_i_x - (self.keypoint_size / scale) / 2.0,
-                keypoint[1] + self.draw_offset_i_y - (self.keypoint_size / scale) / 2.0,
+                pos[0] + self.draw_offset_i_x - (self.keypoint_size / scale) / 2.0,
+                pos[1] + self.draw_offset_i_y - (self.keypoint_size / scale) / 2.0,
                 (self.keypoint_size / scale),
                 (self.keypoint_size / scale))
             painter.drawPath(point_path)
-            if idx == matching.selected_idx_i:
+            if kid == matching.selected_id_i:
                 painter.fillPath(point_path, self.keypoint_selected_fill_color)
-            elif idx == matching.highlighted_idx_i:
-                if idx in bad_keypoints_for_view_i:
-                    painter.fillPath(point_path, self.keypoint_ng_highlighted_fill_color)
-                else:
-                    painter.fillPath(point_path, self.keypoint_ok_highlighted_fill_color)
+            elif kid == matching.highlighted_id_i:
+                painter.fillPath(point_path, self.keypoint_highlighted_fill_color)
             else:
-                if idx in bad_keypoints_for_view_i:
-                    painter.fillPath(point_path, self.keypoint_ng_fill_color)
-                else:
-                    painter.fillPath(point_path, self.keypoint_ok_fill_color)
-        for idx, keypoint in enumerate(matching.get_view_j()['keypoints']):
+                painter.fillPath(point_path, self.keypoint_fill_color)
+        for keypoint in keypoints_j:
+            kid = keypoint['id']
+            pos = keypoint['pos']
             point_path = QPainterPath()
             point_path.addEllipse(
-                keypoint[0] + self.draw_offset_j_x - (self.keypoint_size / scale) / 2.0,
-                keypoint[1] + self.draw_offset_j_y - (self.keypoint_size / scale) / 2.0,
+                pos[0] + self.draw_offset_j_x - (self.keypoint_size / scale) / 2.0,
+                pos[1] + self.draw_offset_j_y - (self.keypoint_size / scale) / 2.0,
                 (self.keypoint_size / scale),
                 (self.keypoint_size / scale))
             painter.drawPath(point_path)
-            if idx == matching.selected_idx_j:
+            if kid == matching.selected_id_j:
                 painter.fillPath(point_path, self.keypoint_selected_fill_color)
-            elif idx == matching.highlighted_idx_j:
-                if idx in bad_keypoints_for_view_j:
-                    painter.fillPath(point_path, self.keypoint_ng_highlighted_fill_color)
-                else:
-                    painter.fillPath(point_path, self.keypoint_ok_highlighted_fill_color)
+            elif kid == matching.highlighted_id_j:
+                painter.fillPath(point_path, self.keypoint_highlighted_fill_color)
             else:
-                if idx in bad_keypoints_for_view_j:
-                    painter.fillPath(point_path, self.keypoint_ng_fill_color)
-                else:
-                    painter.fillPath(point_path, self.keypoint_ok_fill_color)
-        if matching.get_pair_idx() is not None:
-            highlighted_idx_in_view_i = matching.find_match_idx_in_view_i(matching.highlighted_idx_i)
-            highlighted_idx_in_view_j = matching.find_match_idx_in_view_j(matching.highlighted_idx_j)
-            selected_idx_in_view_i = matching.find_match_idx_in_view_i(matching.selected_idx_i)
-            selected_idx_in_view_j = matching.find_match_idx_in_view_j(matching.selected_idx_j)
-            view_i_keypoints = matching.get_view_i()['keypoints']
-            view_j_keypoints = matching.get_view_j()['keypoints']
-            for idx, match in enumerate(matching.get_pair()['matches']):
-                if len(view_i_keypoints) <= match[0] or len(view_j_keypoints) <= match[1]:
-                    continue
-                keypoint_i = view_i_keypoints[match[0]]
-                keypoint_j = view_j_keypoints[match[1]]
-                match_path = QPainterPath()
-                match_path.moveTo(keypoint_i[0] + self.draw_offset_i_x, keypoint_i[1] + self.draw_offset_i_y)
-                match_path.lineTo(keypoint_j[0] + self.draw_offset_j_x, keypoint_j[1] + self.draw_offset_j_y)
-                color = self.match_line_colors[idx % len(self.match_line_colors)]
-                if idx in (highlighted_idx_in_view_i, highlighted_idx_in_view_j):
-                    pen = QPen(QColor(color[0], color[1], color[2], self.match_highlighted_line_alpha))
-                    pen.setWidth(self.match_highlighted_line_width / scale)
-                elif idx in (selected_idx_in_view_i, selected_idx_in_view_j):
-                    pen = QPen(QColor(color[0], color[1], color[2], self.match_selected_line_alpha))
-                    pen.setWidth(self.match_selected_line_width / scale)
-                else:
-                    pen = QPen(QColor(color[0], color[1], color[2], self.match_line_alpha))
-                    pen.setWidth(self.match_line_width / scale)
-                painter.setPen(pen)
-                painter.drawPath(match_path)
+                painter.fillPath(point_path, self.keypoint_fill_color)
 
-    def set_bad_keypoints(self, bad_keypoints, matching):
-        views = matching.get_views()
-        self._bad_keypoints = {i: [] for i in range(len(views))}
-        for x in bad_keypoints:
-            self._bad_keypoints[x[0]].append(x[1])
+        cnt = 0
+        for key in matches.keys():
+            match = matches[key]
+            if (match[0] is None) or (match[1] is None):
+                continue
+            kid_i = match[0]
+            kid_j = match[1]
+            kidx_i = matching.find_keypoint_idx(keypoints_i, kid_i)
+            kidx_j = matching.find_keypoint_idx(keypoints_j, kid_j)
+            pos_i = keypoints_i[kidx_i]['pos']
+            pos_j = keypoints_j[kidx_j]['pos']
+            match_path = QPainterPath()
+            match_path.moveTo(pos_i[0] + self.draw_offset_i_x, pos_i[1] + self.draw_offset_i_y)
+            match_path.lineTo(pos_j[0] + self.draw_offset_j_x, pos_j[1] + self.draw_offset_j_y)
+            color = self.match_line_colors[cnt % len(self.match_line_colors)]
+            if kid_i == matching.selected_id_i or kid_j == matching.selected_id_j:
+                pen = QPen(QColor(color[0], color[1], color[2], self.match_selected_line_alpha))
+                pen.setWidth(self.match_highlighted_line_width / scale)
+            elif kid_i == matching.highlighted_id_i or kid_j == matching.highlighted_id_j:
+                pen = QPen(QColor(color[0], color[1], color[2], self.match_highlighted_line_alpha))
+                pen.setWidth(self.match_selected_line_width / scale)
+            else:
+                pen = QPen(QColor(color[0], color[1], color[2], self.match_line_alpha))
+                pen.setWidth(self.match_line_width / scale)
+            painter.setPen(pen)
+            painter.drawPath(match_path)
+            cnt += 1
