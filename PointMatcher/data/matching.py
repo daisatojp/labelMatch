@@ -40,9 +40,7 @@ class Matching:
     def load_groups(self):
         with open(self.get_groups_path(), 'r') as f:
             self._groups = json.load(f)
-        self._group_id_to_idx = {}
-        for idx, group in enumerate(self._groups['groups']):
-            self._group_id_to_idx[group['id']] = idx
+        self.update_group_id_to_idx()
 
     def load_viewlist(self):
         view_paths = glob(osp.join(self.get_views_dir(), '*.json'))
@@ -61,6 +59,11 @@ class Matching:
             x = json.load(f)
         return x
 
+    def update_group_id_to_idx(self):
+        self._group_id_to_idx = {}
+        for idx, group in enumerate(self._groups['groups']):
+            self._group_id_to_idx[group['id']] = idx
+
     def initialize_matchcounter(self):
         self._matchcounter = {}
         for group in self._groups['groups']:
@@ -73,7 +76,7 @@ class Matching:
 
     def increment_matchcounter(self, view_id_i, view_id_j):
         if view_id_i not in self._matchcounter:
-            self._matchcounter[view_id_i] = {view_id_j: 0}
+            self._matchcounter[view_id_i] = {view_id_j: 1}
         elif view_id_j not in self._matchcounter[view_id_i]:
             self._matchcounter[view_id_i][view_id_j] = 1
         else:
@@ -130,6 +133,8 @@ class Matching:
     def get_match_count(self, view_id_i, view_id_j):
         if (view_id_i in self._matchcounter) and (view_id_j in self._matchcounter[view_id_i]):
             return self._matchcounter[view_id_i][view_id_j]
+        else:
+            return 0
 
     def get_pair_count(self, view_id):
         if view_id in self._matchcounter:
@@ -210,6 +215,7 @@ class Matching:
             self._groups['groups'].append({
                 'id': new_group_id,
                 'keypoints': [(vid_i, kid_i), (vid_j, kid_j)]})
+            self.update_group_id_to_idx()
             self._view_i['keypoints'][kidx_i]['group_id'] = new_group_id
             self._view_j['keypoints'][kidx_j]['group_id'] = new_group_id
             self._matches[new_group_id] = [kid_i, kid_j]
@@ -223,7 +229,7 @@ class Matching:
             self.set_dirty()
             return
         if (gid_i is not None) and (gid_j is None):
-            gks_i = self._groups[self._group_id_to_idx[gid_i]]
+            gks_i = self._groups['groups'][self._group_id_to_idx[gid_i]]['keypoints']
             self._groups['groups'][self._group_id_to_idx[gid_i]]['keypoints'].append((vid_j, kid_j))
             self._view_j['keypoints'][kidx_j]['group_id'] = gid_i
             self._matches[gid_i][1] = kid_j
@@ -237,10 +243,10 @@ class Matching:
             self.set_dirty()
             return
         if (gid_i is None) and (gid_j is not None):
-            gks_j = self._groups[self._group_id_to_idx[gid_j]]
+            gks_j = self._groups['groups'][self._group_id_to_idx[gid_j]]['keypoints']
             self._groups['groups'][self._group_id_to_idx[gid_j]]['keypoints'].append((vid_i, kid_i))
             self._view_i['keypoints'][kidx_i]['group_id'] = gid_j
-            self._matches[gid_j][1] = kid_j
+            self._matches[gid_j][0] = kid_i
             self._dirty_groups = True
             self._dirty_views[vid_i] = self._view_i
             for gk in gks_j:
@@ -251,29 +257,31 @@ class Matching:
             self.set_dirty()
             return True
         if (gid_i is not None) and (gid_j is not None):
-            gks_i = self._groups[self._group_id_to_idx[gid_i]]
-            gks_j = self._groups[self._group_id_to_idx[gid_j]]
-            all_keypoints = self._groups[self._group_id_to_idx[gid_i]]['keypoints']
-            all_keypoints += self._groups[self._group_id_to_idx[gid_j]]['keypoints']
-            all_vids = [keypoint[0] for keypoint in all_keypoints]
+            gks_i = self._groups['groups'][self._group_id_to_idx[gid_i]]['keypoints']
+            gks_j = self._groups['groups'][self._group_id_to_idx[gid_j]]['keypoints']
+            gks = gks_i + gks_j
+            all_vids = [gk[0] for gk in gks]
             if any([count > 1 for item, count in Counter(all_vids).items()]):
                 return False
             del self._groups['groups'][self._group_id_to_idx[gid_i]]
+            self.update_group_id_to_idx()
             del self._groups['groups'][self._group_id_to_idx[gid_j]]
-            del self._matches[gid_i]
-            del self._matches[gid_j]
+            self.update_group_id_to_idx()
             self._groups['groups'].append({
                 'id': new_group_id,
-                'keypoints': all_keypoints})
+                'keypoints': gks})
+            self.update_group_id_to_idx()
+            del self._matches[gid_i]
+            del self._matches[gid_j]
             self._view_i['keypoints'][kidx_i]['group_id'] = new_group_id
             self._view_j['keypoints'][kidx_j]['group_id'] = new_group_id
             self._matches[new_group_id] = [kid_i, kid_j]
             self._dirty_groups = True
             self._dirty_views[vid_i] = self._view_i
             self._dirty_views[vid_j] = self._view_j
-            for keypoint in all_keypoints:
-                vid = keypoint[0]
-                kid = keypoint[1]
+            for gk in gks:
+                vid = gk[0]
+                kid = gk[1]
                 if vid in (vid_i, vid_j):
                     continue
                 if vid in self._dirty_views:
@@ -299,12 +307,16 @@ class Matching:
         kidx = self.find_keypoint_idx(self.get_keypoints_i(), kid)
         gid = self._view_i['keypoints'][kidx]['group_id']
         if gid is not None:
-            self._groups[gid].remove((vid, kid))
+            self.remove_keypoint_from_group(gid, vid, kid)
             self._dirty_groups = True
             if self._matches[gid][1] is None:
                 del self._matches[gid]
             else:
                 self._matches[gid][0] = None
+            gks = self._groups['groups'][self._group_id_to_idx[gid]]
+            for gk in gks:
+                self.decrement_matchcounter(gk[0], vid)
+                self.decrement_matchcounter(vid, gk[0])
         del self._view_i['keypoints'][kidx]
         self._dirty_views[vid] = self._view_i
         self.set_update()
@@ -316,14 +328,18 @@ class Matching:
         kidx = self.find_keypoint_idx(self.get_keypoints_j(), kid)
         gid = self._view_j['keypoints'][kidx]['group_id']
         if gid is not None:
-            self._groups[gid].remove((vid, kid))
+            self.remove_keypoint_from_group(gid, vid, kid)
             self._dirty_groups = True
-            if self._matches[gid][1] is None:
+            if self._matches[gid][0] is None:
                 del self._matches[gid]
             else:
-                self._matches[gid][0] = None
-        del self._view_i['keypoints'][kidx]
-        self._dirty_views[vid] = self._view_i
+                self._matches[gid][1] = None
+            gks = self._groups['groups'][self._group_id_to_idx[gid]]
+            for gk in gks:
+                self.decrement_matchcounter(gk[0], vid)
+                self.decrement_matchcounter(vid, gk[0])
+        del self._view_j['keypoints'][kidx]
+        self._dirty_views[vid] = self._view_j
         self.set_update()
         self.set_dirty()
 
@@ -333,7 +349,7 @@ class Matching:
         kidx = self.find_keypoint_idx(self.get_keypoints_i(), kid)
         gid = self._view_i['keypoints'][kidx]['group_id']
         if gid is not None:
-            self._groups[gid].remove((vid, kid))
+            self.remove_keypoint_from_group(gid, vid, kid)
             self._dirty_groups = True
             if self._matches[gid][1] is None:
                 del self._matches[gid]
@@ -350,16 +366,22 @@ class Matching:
         kidx = self.find_keypoint_idx(self.get_keypoints_j(), kid)
         gid = self._view_j['keypoints'][kidx]['group_id']
         if gid is not None:
-            self._groups[gid].remove((vid, kid))
+            self.remove_keypoint_from_group(gid, vid, kid)
             self._dirty_groups = True
-            if self._matches[gid][1] is None:
+            if self._matches[gid][0] is None:
                 del self._matches[gid]
             else:
-                self._matches[gid][0] = None
+                self._matches[gid][1] = None
             self._view_j['keypoints'][kidx]['group_id'] = None
             self._dirty_views[vid] = self._view_j
             self.set_update()
             self.set_dirty()
+
+    def remove_keypoint_from_group(self, gid, vid, kid):
+        self._groups['groups'][self._group_id_to_idx[gid]]['keypoints'].remove((vid, kid))
+        if len(self._groups['groups'][self._group_id_to_idx[gid]]) == 0:
+            del self._groups['groups'][self._group_id_to_idx[gid]]
+            self.update_group_id_to_idx()
 
     def empty_i(self):
         return len(self._view_i['keypoints']) == 0
@@ -410,9 +432,11 @@ class Matching:
         if self._dirty_groups:
             with open(self.get_groups_path(), 'w') as f:
                 json.dump(self._groups, f, indent=4)
-        for v in self._dirty_views:
-            with open(self._viewlist[v['id']]['view_path'], 'w') as f:
-                json.dump(v, f, indent=4)
+            self._dirty_groups = True
+        for key, val in self._dirty_views.items():
+            with open(self._viewlist[val['id']]['view_path'], 'w') as f:
+                json.dump(val, f, indent=4)
+            self._dirty_views = {}
 
     def set_update(self):
         if self._update_callback:

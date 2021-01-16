@@ -162,7 +162,6 @@ class MainWindow(QMainWindow, WindowMixin):
         if not self.mayContinue():
             event.ignore()
         self.settings.save()
-        self.actions.inspection.terminate_thread()
 
     def getMatchingUpdateEvent(self):
         self.viewIWidget.update_text()
@@ -187,7 +186,7 @@ class MainWindow(QMainWindow, WindowMixin):
             if self.matching.dirty():
                 saveChanges = QMessageBox.warning(self, 'Attention', msg, Yes | No | Cancel)
                 if saveChanges == Yes:
-                    self.matching.save(self.savePath)
+                    self.matching.save()
                     return True
                 elif saveChanges == No:
                     return True
