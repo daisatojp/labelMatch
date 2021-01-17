@@ -137,6 +137,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.changePair(view_id_i, view_id_j)
 
     def changePair(self, view_id_i, view_id_j):
+        self.matching.clear_decoration()
         view_idx_i = self.matching.find_view_idx(view_id_i)
         view_idx_j = self.matching.find_view_idx(view_id_j)
         self.matching.set_view(view_id_i, view_id_j)
@@ -147,7 +148,7 @@ class MainWindow(QMainWindow, WindowMixin):
         self.canvas.repaint()
         if self.actions.autoSaving.isChecked():
             if self.matching.dirty():
-                self.matching.save(self.savePath)
+                self.matching.save()
                 self.actions.save.setEnabled(False)
 
     def resizeEvent(self, event):
@@ -168,14 +169,36 @@ class MainWindow(QMainWindow, WindowMixin):
         self.viewJWidget.update_text()
 
     def getMatchingDirtyEvent(self):
-        if not self.actions.autoSaving.isChecked():
-            self.actions.save.setEnabled(True)
+        self.actions.save.setEnabled(True)
 
     def updateTitle(self):
         if self.annotDir is None:
             self.setWindowTitle(__appname__)
         else:
             self.setWindowTitle('{} [{}]'.format(__appname__, self.annotDir))
+
+    def updateStatusMessage(self):
+        if self.matching is not None:
+            vid = None
+            kid = None
+            if self.matching.highlighted_id_i is not None:
+                vid = self.matching.get_view_id_i()
+                kid = self.matching.highlighted_id_i
+            elif self.matching.highlighted_id_j is not None:
+                vid = self.matching.get_view_id_j()
+                kid = self.matching.highlighted_id_j
+            elif self.matching.selected_id_i is not None:
+                vid = self.matching.get_view_id_i()
+                kid = self.matching.selected_id_i
+            elif self.matching.selected_id_j is not None:
+                vid = self.matching.get_view_id_j()
+                kid = self.matching.selected_id_j
+            if vid is not None and kid is not None:
+                keypoint = self.matching.get_keypoint(vid, kid)
+                self.statusBar().showMessage('view_id={}, keypoint_id={}, group_id={}, x={:0.1f}, y={:0.1f}'.format(
+                    vid, kid, keypoint['group_id'], keypoint['pos'][0], keypoint['pos'][1]))
+                return
+        self.statusBar().showMessage('')
 
     def mayContinue(self):
         Yes = QMessageBox.Yes

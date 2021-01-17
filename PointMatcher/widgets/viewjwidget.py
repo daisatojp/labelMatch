@@ -39,6 +39,7 @@ class ViewJWidget(QDockWidget):
         self.viewListWidget.setCurrentRow(idx)
 
     def initialize(self):
+        self.viewListWidget.clear()
         list_of_view_id = self.p.matching.get_list_of_view_id()
         for view_id in list_of_view_id:
             self.viewListWidget.addItem(self.item_text(view_id))

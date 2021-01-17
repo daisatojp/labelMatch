@@ -71,8 +71,7 @@ class MatchingPainter:
             else:
                 painter.fillPath(point_path, self.keypoint_fill_color)
 
-        cnt = 0
-        for key in matches.keys():
+        for idx, key in enumerate(matches.keys()):
             match = matches[key]
             if (match[0] is None) or (match[1] is None):
                 continue
@@ -85,7 +84,7 @@ class MatchingPainter:
             match_path = QPainterPath()
             match_path.moveTo(pos_i[0] + self.draw_offset_i_x, pos_i[1] + self.draw_offset_i_y)
             match_path.lineTo(pos_j[0] + self.draw_offset_j_x, pos_j[1] + self.draw_offset_j_y)
-            color = self.match_line_colors[cnt % len(self.match_line_colors)]
+            color = self.match_line_colors[idx % len(self.match_line_colors)]
             if kid_i == matching.selected_id_i or kid_j == matching.selected_id_j:
                 pen = QPen(QColor(color[0], color[1], color[2], self.match_selected_line_alpha))
                 pen.setWidth(self.match_highlighted_line_width / scale)
@@ -97,4 +96,3 @@ class MatchingPainter:
                 pen.setWidth(self.match_line_width / scale)
             painter.setPen(pen)
             painter.drawPath(match_path)
-            cnt += 1

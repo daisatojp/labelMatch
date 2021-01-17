@@ -13,11 +13,9 @@ class OpenPrevViewAction(QAction):
         self.setIcon(QIcon(icon_path('prev')))
         self.setShortcut('a')
         self.triggered.connect(self.openPrevView)
-        self.setEnabled(False)
+        self.setEnabled(True)
 
     def openPrevView(self, _value=False):
-        if self.p.actions.autoSaving.isChecked():
-            self.matching.save()
         view_id_i = self.p.matching.get_view_id_i()
         view_id_j = self.p.matching.get_view_id_j()
         view_id_j = self.p.matching.get_prev_view(view_id_j)
