@@ -230,6 +230,8 @@ class Matching:
             return
         if (gid_i is not None) and (gid_j is None):
             gks_i = self._groups['groups'][self._group_id_to_idx[gid_i]]['keypoints']
+            if vid_j in [gk[0] for gk in gks_i]:
+                raise RuntimeWarning('conflict')
             self._groups['groups'][self._group_id_to_idx[gid_i]]['keypoints'].append((vid_j, kid_j))
             self._view_j['keypoints'][kidx_j]['group_id'] = gid_i
             self._matches[gid_i][1] = kid_j
@@ -244,6 +246,8 @@ class Matching:
             return
         if (gid_i is None) and (gid_j is not None):
             gks_j = self._groups['groups'][self._group_id_to_idx[gid_j]]['keypoints']
+            if vid_i in [gk[0] for gk in gks_j]:
+                raise RuntimeWarning('conflict')
             self._groups['groups'][self._group_id_to_idx[gid_j]]['keypoints'].append((vid_i, kid_i))
             self._view_i['keypoints'][kidx_i]['group_id'] = gid_j
             self._matches[gid_j][0] = kid_i
@@ -255,14 +259,14 @@ class Matching:
             if update:
                 self.set_update()
             self.set_dirty()
-            return True
+            return
         if (gid_i is not None) and (gid_j is not None):
             gks_i = self._groups['groups'][self._group_id_to_idx[gid_i]]['keypoints']
             gks_j = self._groups['groups'][self._group_id_to_idx[gid_j]]['keypoints']
             gks = gks_i + gks_j
             all_vids = [gk[0] for gk in gks]
             if any([count > 1 for item, count in Counter(all_vids).items()]):
-                return False
+                raise RuntimeWarning('conflict')
             del self._groups['groups'][self._group_id_to_idx[gid_i]]
             self.update_group_id_to_idx()
             del self._groups['groups'][self._group_id_to_idx[gid_j]]
