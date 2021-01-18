@@ -34,12 +34,12 @@ class MainWindow(QMainWindow, WindowMixin):
     def __init__(self):
         super(MainWindow, self).__init__()
 
-        self.matching = None
-        self.imageDir = None
-        self.annotDir = None
-
         self.settings = Settings()
         self.settings.load()
+
+        self.matching = None
+        self.imageDir = self.settings.get('imageDir', None)
+        self.annotDir = self.settings.get('annotDir', None)
 
         self.viewIWidget = ViewIWidget(parent=self)
         self.viewIWidget.itemClicked_connect(self.viewitemClicked)
@@ -162,6 +162,8 @@ class MainWindow(QMainWindow, WindowMixin):
     def closeEvent(self, event):
         if not self.mayContinue():
             event.ignore()
+        self.settings['imageDir'] = self.imageDir
+        self.settings['annotDir'] = self.annotDir
         self.settings.save()
 
     def getMatchingUpdateEvent(self):

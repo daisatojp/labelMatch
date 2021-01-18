@@ -18,15 +18,17 @@ class ExportAction(QAction):
 
     def export(self, _value=False):
         if (self.p.annotDir is not None) and osp.exists(self.p.annotDir):
-            path = self.p.annotDir
+            defaultDir = self.p.annotDir
         elif (self.p.imageDir is not None) and osp.exists(self.p.imageDir):
-            path = self.p.imageDir
+            defaultDir = self.p.imageDir
         else:
-            path = '.'
-        filters = 'matching file (*.json *.pkl)'
+            defaultDir = '.'
+        defaultDir = self.p.settings.get('exportPath', defaultDir)
+        filters = 'json file (*.json)'
         filename = QFileDialog.getSaveFileName(
-            self.p, 'choose file name to be saved', path, filters)
+            self.p, 'choose file name to be exported', defaultDir, filters)
         if filename:
             if isinstance(filename, (tuple, list)):
                 filename = filename[0]
-            raise NotImplementedError()
+            self.p.matching.export(filename)
+            self.p.settings['exportPath'] = osp.dirname(filename)

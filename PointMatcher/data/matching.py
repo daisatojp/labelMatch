@@ -6,6 +6,7 @@ from collections import Counter
 from collections import OrderedDict
 import json
 from glob import glob
+from tqdm import tqdm
 
 
 class Matching:
@@ -118,6 +119,9 @@ class Matching:
     def get_view_id_j(self):
         return self._view_j['id']
 
+    def get_keypoints(self, view_id):
+        return self.load_view(view_id)['keypoints']
+
     def get_keypoints_i(self):
         return self._view_i['keypoints']
 
@@ -182,11 +186,12 @@ class Matching:
     def set_keypoint_pos_in_view_j(self, keypoint_id, x, y):
         kidx = self.find_keypoint_idx(self.get_keypoints_j(), keypoint_id)
         self._view_j['keypoints'][kidx]['pos'] = [x, y]
-        self._dirty_views[self._view_i['id']] = self._view_j
+        self._dirty_views[self._view_j['id']] = self._view_j
         self.set_update()
         self.set_dirty()
 
     def append_keypoint_in_view_i(self, x, y):
+        vid = self.get_view_id_i()
         if self.empty_i():
             new_id = 0
         else:
@@ -195,10 +200,13 @@ class Matching:
             'id': new_id,
             'pos': [x, y],
             'group_id': None})
+        self._dirty_views[vid] = self._view_i
+        self._viewlist[vid]['keypoint_count'] += 1
         self.set_update()
         self.set_dirty()
 
     def append_keypoint_in_view_j(self, x, y):
+        vid = self.get_view_id_j()
         if self.empty_j():
             new_id = 0
         else:
@@ -207,6 +215,8 @@ class Matching:
             'id': new_id,
             'pos': [x, y],
             'group_id': None})
+        self._dirty_views[vid] = self._view_j
+        self._viewlist[vid]['keypoint_count'] += 1
         self.set_update()
         self.set_dirty()
 
@@ -313,8 +323,8 @@ class Matching:
             if update:
                 self.set_update()
             self.set_dirty()
-            return True
-        return False
+            return
+        raise RuntimeWarning('failed')
 
     def remove_keypoint_in_view_i(self, keypoint_id):
         vid = self.get_view_id_i()
@@ -323,6 +333,7 @@ class Matching:
         self.remove_match_in_view_i(kid, update=False)
         del self._view_i['keypoints'][kidx]
         self._dirty_views[vid] = self._view_i
+        self._viewlist[vid]['keypoint_count'] += 1
         self.set_update()
         self.set_dirty()
 
@@ -333,6 +344,7 @@ class Matching:
         self.remove_match_in_view_j(kid, update=False)
         del self._view_j['keypoints'][kidx]
         self._dirty_views[vid] = self._view_j
+        self._viewlist[vid]['keypoint_count'] += 1
         self.set_update()
         self.set_dirty()
 
@@ -440,6 +452,40 @@ class Matching:
             with open(self._viewlist[val['id']]['view_path'], 'w') as f:
                 json.dump(val, f, indent=4)
             self._dirty_views = {}
+
+    def export(self, path):
+        data = {'views': [], 'pairs': []}
+        for vid in tqdm(self._viewlist, desc='prepare views'):
+            view = self.load_view(vid)
+            data['views'].append({
+                'id_view': vid,
+                'filename': view['filename'],
+                'keypoints': []})
+            for keypoint in view['keypoints']:
+                data['views'][-1]['keypoints'].append([keypoint['pos'][0], keypoint['pos'][1]])
+        pair_dict = {}
+        for group in tqdm(self._groups['groups'], 'parse groups'):
+            gks = sorted(group['keypoints'], key=lambda x: x[0])
+            for i in range(0, len(gks)):
+                for j in range(i + 1, len(gks)):
+                    vid_i = gks[i][0]
+                    vid_j = gks[j][0]
+                    kid_i = gks[i][1]
+                    kid_j = gks[j][1]
+                    kidx_i = self.find_keypoint_idx(self.get_keypoints(vid_i), kid_i)
+                    kidx_j = self.find_keypoint_idx(self.get_keypoints(vid_j), kid_j)
+                    if (vid_i, vid_j) in pair_dict:
+                        pair_dict[(vid_i, vid_j)].append([kidx_i, kidx_j])
+                    else:
+                        pair_dict[(vid_i, vid_j)] = [[kidx_i, kidx_j]]
+        for key in tqdm(pair_dict, 'prepare pairs'):
+            data['pairs'].append({
+                'id_view_i': key[0],
+                'id_view_j': key[1],
+                'matches': pair_dict[key]})
+        with open(path, 'w') as f:
+            json.dump(data, f)
+        print('exported')
 
     def set_update(self):
         if self._update_callback:

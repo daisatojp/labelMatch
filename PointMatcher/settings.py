@@ -1,13 +1,13 @@
 import os
-import sys
+import os.path as osp
 import pickle
 
 
 class Settings(object):
     def __init__(self):
-        home = os.path.expanduser('~')
+        home = osp.expanduser('~')
         self.data = {}
-        self.path = os.path.join(home, '.PointMatcherSettings.pkl')
+        self.path = osp.join(home, '.PointMatcherSettings.pkl')
 
     def __setitem__(self, key, value):
         self.data[key] = value
@@ -21,24 +21,11 @@ class Settings(object):
         return default
 
     def save(self):
-        if self.path:
-            with open(self.path, 'wb') as f:
-                pickle.dump(self.data, f, pickle.HIGHEST_PROTOCOL)
-                return True
-        return False
+        with open(self.path, 'wb') as f:
+            pickle.dump(self.data, f, pickle.HIGHEST_PROTOCOL)
 
     def load(self):
-        try:
-            if os.path.exists(self.path):
-                with open(self.path, 'rb') as f:
-                    self.data = pickle.load(f)
-                    return True
-        except:
-            print('Loading setting failed')
-        return False
-
-    def reset(self):
-        if os.path.exists(self.path):
-            os.remove(self.path)
-        self.data = {}
-        self.path = None
+        if osp.exists(self.path):
+            with open(self.path, 'rb') as f:
+                self.data = pickle.load(f)
+                return True
