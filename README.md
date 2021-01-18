@@ -40,6 +40,8 @@ Please read the [Tutorial](https://pointmatcher.readthedocs.io/en/master/Tutoria
 
 ## Annotation format
 
+You can export annotated data to one json file in the following format.
+
 ```text
 {
   "views": [
