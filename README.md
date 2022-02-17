@@ -34,10 +34,6 @@ cd PointMatcher
 python PointMatcher/__main__.py
 ```
 
-## How to Use
-
-Please read the [Tutorial](https://pointmatcher.readthedocs.io/en/master/Tutorial/Tutorial.html).
-
 ## Annotation format
 
 You can export annotated data to one json file in the following format.
