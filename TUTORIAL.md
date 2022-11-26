@@ -2,11 +2,11 @@
 
 ## Prepare image files
 
-You have to decide root directory of images. Store all images into it or its subdirectories.
+You have to decide a root directory of images. Store all images into it or its subdirectories.
 
 ## Create New Project
 
-Select `File` > `New Project`. Select root directory of the images in the first line and select a folder which annotation files will be saved to.
+Select `File` > `New Project`. Select the root directory of the images in the first line and select a folder which annotation files will be saved to in the second line.
 
 ## Open image directory
 
@@ -18,7 +18,7 @@ Select `File` > `Open Annot File`, then select the annotation folder.
 
 ## Create keypoints
 
-Select `Edit` > `Edit Keypoint` or just press `v`. You can create a keypoint by clicking images. You can delete a keypoints by double clicking a keypoint.
+Select `Edit` > `Edit Keypoint` or just press `v`. You can create a keypoint by clicking images. You can delete a keypoint by double clicking it.
 
 ## Create matches
 
