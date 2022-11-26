@@ -1,6 +1,4 @@
-from PyQt5.QtGui import QColor
-from PyQt5.QtGui import QPainterPath
-from PyQt5.QtGui import QPen
+from PyQt5.QtGui import *
 
 
 class MatchingPainter:
