@@ -26,7 +26,7 @@ python PointMatcher/__main__.py
 
 ### Tutorial
 
-see [[Tutorial.md](Tutorial.md)].
+see [TUTORIAL.md](TUTORIAL.md).
 
 ## Annotation format
 
