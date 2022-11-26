@@ -15,24 +15,18 @@
 
 You can use binary file. Please download from the [Release](https://github.com/daisatojp/PointMatcher/releases).
 
-### with pip (Any OS)
-
-I haven't made binary for other than Windows yet. Please download through pip.
-
-```bash
-conda create --name=PointMatcher python=3.7
-conda activate PointMatcher
-pip install PointMatcher
-PointMatcher
-```
-
 ### with git-clone (Any OS)
 
 ```bash
 git clone https://github.com/daisatojp/PointMatcher.git --recursive
 cd PointMatcher
+pip install numpy opencv-python pyqt5
 python PointMatcher/__main__.py
 ```
+
+### Tutorial
+
+see [[Tutorial.md](Tutorial.md)].
 
 ## Annotation format
 
@@ -45,8 +39,8 @@ You can export annotated data to one json file in the following format.
       "id_view": 0,
       "filename": ["dirname", "dirname", ..., "filename"],
       "keypoints": [
-        [x1, y1],
-        [x2, y2],
+        [<x1>, <y1>],
+        [<x2>, <y2>],
         ...
       ]
     }
@@ -54,11 +48,11 @@ You can export annotated data to one json file in the following format.
   ],
   "pairs": [
     {
-      "id_view_i": 0,
-      "id_view_j": 1,
+      "id_view_i": <id of first view>,
+      "id_view_j": <id of second view>,
       "matches": [
-        [0, 0],
-        [2, 3],
+        [<index of keypoint of first view>, <index of keypoint of second view>],
+        [<index of keypoint of first view>, <index of keypoint of second view>],
         ...
       ]
     }

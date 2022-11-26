@@ -8,6 +8,7 @@ from PointMatcher.utils import *
 
 
 QDBB = QDialogButtonBox
+QFD = QFileDialog
 
 
 class NewProjectDialog(QDialog):
@@ -49,7 +50,7 @@ class NewProjectDialog(QDialog):
 
     def pop_open_image_dir(self):
         default_image_dir = '.'
-        if osp.exists(self.edit_open_image_dir.text()):
+        if osp.exists(self.ledit_open_image_dir.text()):
             default_image_dir = self.ledit_open_image_dir.text()
         open_image_dir = QFD.getExistingDirectory(
             self, 'Open Image Directory', default_image_dir,

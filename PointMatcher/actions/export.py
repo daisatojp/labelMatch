@@ -4,6 +4,9 @@ from PyQt5.QtWidgets import *
 from PointMatcher.utils import *
 
 
+QFD = QFileDialog
+
+
 class ExportAction(QAction):
 
     def __init__(self, parent):
