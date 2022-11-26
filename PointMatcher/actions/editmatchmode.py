@@ -1,23 +1,22 @@
 import os.path as osp
-from PyQt5 import QtGui
-from PyQt5 import QtCore
-from PyQt5 import QtWidgets
-from PointMatcher.utils.filesystem import icon_path
+from PyQt5.QtWidgets import *
+from PointMatcher.utils import *
 
 
-class EditMatchModeAction(QtWidgets.QAction):
+class EditMatchModeAction(QAction):
 
     def __init__(self, parent):
         super(EditMatchModeAction, self).__init__('Edit Match', parent)
+        self.p = parent  # MainWindow
+        self.mw = self.p  # MainWindow
 
-        self.p = parent
-        self.triggered.connect(self.editMatchMode)
+        self.triggered.connect(self.edit_match_mode)
         self.setEnabled(True)
         self.setCheckable(True)
         self.setChecked(False)
         self.setShortcut('e')
 
-    def editMatchMode(self):
-        self.p.actions.editKeypointMode.setChecked(False)
-        self.p.actions.editMatchMode.setChecked(True)
-        self.p.canvas.setEditMatchMode()
+    def edit_match_mode(self):
+        self.mw.edit_keypoint_mode_action.setChecked(False)
+        self.mw.edit_match_mode_action.setChecked(True)
+        self.mw.canvas.set_edit_match_mode()

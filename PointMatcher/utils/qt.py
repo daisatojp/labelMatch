@@ -8,7 +8,7 @@ from PyQt5 import QtWidgets
 from PointMatcher.utils.filesystem import icon_path
 
 
-def newButton(text, icon=None, slot=None):
+def new_button(text, icon=None, slot=None):
     b = QtWidgets.QPushButton(text)
     if icon is not None:
         b.setIcon(QtGui.QIcon(icon_path(icon)))
@@ -17,7 +17,7 @@ def newButton(text, icon=None, slot=None):
     return b
 
 
-def newAction(
+def new_action(
         parent, text,
         slot=None, shortcut=None, icon=None,
         tip=None, checkable=False, enabled=True):
@@ -41,7 +41,7 @@ def newAction(
     return a
 
 
-def addActions(widget, actions):
+def add_actions(widget, actions):
     for action in actions:
         if action is None:
             widget.addSeparator()

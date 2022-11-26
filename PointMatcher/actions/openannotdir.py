@@ -1,48 +1,48 @@
 import os.path as osp
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction
-from PyQt5.QtWidgets import QFileDialog
-from PyQt5.QtWidgets import QMessageBox
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
 from PointMatcher import __appname__
-from PointMatcher.data import Matching
-from PointMatcher.utils.filesystem import icon_path
+from PointMatcher.matching import Matching
+from PointMatcher.utils import *
 
 
 QFD = QFileDialog
+QMB = QMessageBox
 
 
 class OpenAnnotDirAction(QAction):
 
     def __init__(self, parent):
         super(OpenAnnotDirAction, self).__init__('Open Annot Dir', parent)
-        self.p = parent
+        self.p = parent  # MainWindow
+        self.mw = self.p  # MainWindow
 
         self.setIcon(QIcon(icon_path('open')))
         self.setShortcut('Ctrl+O')
-        self.triggered.connect(self.openAnnotDir)
+        self.triggered.connect(self.open_annot_dir)
         self.setEnabled(False)
 
-    def openAnnotDir(self, _value=False):
-        if not self.p.mayContinue():
+    def open_annot_dir(self, _value=False):
+        if not self.mw.may_continue():
             return
-        if (self.p.annotDir is not None) and osp.exists(self.p.annotDir):
-            defaultDir = self.p.annotDir
-        elif (self.p.imageDir is not None) and osp.exists(self.p.imageDir):
-            defaultDir = self.p.imageDir
+        if (self.mw.annot_dir is not None) and osp.exists(self.mw.annot_dir):
+            default_dir = self.mw.annot_dir
+        elif (self.mw.image_dir is not None) and osp.exists(self.mw.image_dir):
+            default_dir = self.mw.image_dir
         else:
-            defaultDir = '.'
-        annotDir = QFileDialog.getExistingDirectory(
-            self.p, '{} - Open Annotation Directory'.format(__appname__), defaultDir,
-            QFD.ShowDirsOnly | QFD.DontResolveSymlinks)
-        if osp.isdir(annotDir):
-            views_dir = osp.join(annotDir, 'views')
-            groups_path = osp.join(annotDir, 'groups.json')
+            default_dir = '.'
+        annot_dir = QFD.getExistingDirectory(
+            self.mw, '{} - Open Annotation Directory'.format(__appname__), default_dir,
+            QFD.DontUseNativeDialog | QFD.ShowDirsOnly | QFD.DontResolveSymlinks)
+        if osp.isdir(annot_dir):
+            views_dir = osp.join(annot_dir, 'views')
+            groups_path = osp.join(annot_dir, 'groups.json')
             if not osp.isdir(views_dir):
-                QMessageBox.warning(self.p, 'Error', '{} not found'.format(views_dir), QMessageBox.Ok)
+                QMB.warning(self.p, 'Error', '{} not found'.format(views_dir), QMB.Ok)
                 return
             if not osp.isfile(groups_path):
-                QMessageBox.warning(self.p, 'Error', '{} not found'.format(groups_path), QMessageBox.Ok)
+                QMB.warning(self.p, 'Error', '{} not found'.format(groups_path), QMB.Ok)
                 return
-            self.p.annotDir = annotDir
-            self.p.loadMatching()
-            self.p.updateTitle()
+            self.mw.annot_dir = annot_dir
+            self.mw.load_matching()
+            self.mw.update_title()

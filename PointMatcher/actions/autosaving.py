@@ -1,12 +1,13 @@
 import os.path as osp
-from PyQt5.QtWidgets import QAction
+from PyQt5.QtWidgets import *
 
 
-class AutoSavingAction(QAction):
+class AutoSaveAction(QAction):
 
     def __init__(self, parent):
-        super(AutoSavingAction, self).__init__('Auto Save Mode', parent)
-        self.p = parent
+        super(AutoSaveAction, self).__init__('Auto Save Mode', parent)
+        self.p = parent  # MainWindow
+        self.mw = self.p  # MainWindow
 
         self.setCheckable(True)
         self.setChecked(False)

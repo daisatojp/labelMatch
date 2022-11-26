@@ -1,22 +1,22 @@
-from PyQt5 import QtGui
-from PyQt5 import QtCore
-from PyQt5 import QtWidgets
+from PyQt5.QtGui import *
+from PyQt5.QtCore import *
+from PyQt5.QtWidgets import *
 
 
-class ScrollWidget(QtWidgets.QScrollArea):
+class ScrollWidget(QScrollArea):
 
     def __init__(self, parent):
         super(ScrollWidget, self).__init__()
+        self.p = parent  # MainWindow
+        self.mw = self.p  # MainWindow
 
-        self.parent = parent
-
-        self.setWidget(self.parent.canvas)
+        self.setWidget(self.p.canvas)
         self.setWidgetResizable(True)
-        self.scrollBars = {
-            QtCore.Qt.Vertical: self.verticalScrollBar(),
-            QtCore.Qt.Horizontal: self.horizontalScrollBar()}
+        self.scrollbars = {
+            Qt.Vertical: self.verticalScrollBar(),
+            Qt.Horizontal: self.horizontalScrollBar()}
 
-    def scrollRequest(self, delta, orientation):
+    def scroll_request(self, delta, orientation):
         units = - delta / (8 * 15)
-        bar = self.scrollBars[orientation]
+        bar = self.scrollbars[orientation]
         bar.setValue(bar.value() + bar.singleStep() * units)
