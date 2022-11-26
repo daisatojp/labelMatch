@@ -63,7 +63,7 @@ You can export annotated data to one json file in the following format.
 
 ## License
 
-[MIT license](https://github.com/daisatojp/PointMatcher/blob/master/LICENSE)
+[MIT license](LICENSE)
 
 ## Acknowledgment
 
