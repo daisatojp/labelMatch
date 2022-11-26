@@ -1,15 +1,18 @@
 import os.path as osp
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction
-from PyQt5.QtWidgets import QFileDialog
-from PointMatcher.utils.filesystem import icon_path
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+from PointMatcher.utils import *
+
+
+QFD = QFileDialog
 
 
 class ExportAction(QAction):
 
     def __init__(self, parent):
         super(ExportAction, self).__init__('Export', parent)
-        self.p = parent
+        self.p = parent  # MainWindow
+        self.mw = self.p  # MainWindow
 
         self.setIcon(QIcon(icon_path('save')))
         self.setShortcut('Ctrl+Alt+S')
@@ -17,18 +20,19 @@ class ExportAction(QAction):
         self.setEnabled(False)
 
     def export(self, _value=False):
-        if (self.p.annotDir is not None) and osp.exists(self.p.annotDir):
-            defaultDir = self.p.annotDir
-        elif (self.p.imageDir is not None) and osp.exists(self.p.imageDir):
-            defaultDir = self.p.imageDir
+        if (self.mw.annot_dir is not None) and osp.exists(self.mw.annot_dir):
+            default_dir = self.mw.annot_dir
+        elif (self.mw.image_dir is not None) and osp.exists(self.mw.image_dir):
+            default_dir = self.mw.image_dir
         else:
-            defaultDir = '.'
-        defaultDir = self.p.settings.get('exportPath', defaultDir)
+            default_dir = '.'
+        default_dir = self.mw.settings.get('export_path', default_dir)
         filters = 'json file (*.json)'
-        filename = QFileDialog.getSaveFileName(
-            self.p, 'choose file name to be exported', defaultDir, filters)
+        filename = QFD.getSaveFileName(
+            self.p, 'choose file name to be exported', default_dir, filters,
+            options=QFD.DontUseNativeDialog)
         if filename:
             if isinstance(filename, (tuple, list)):
                 filename = filename[0]
-            self.p.matching.export(filename)
-            self.p.settings['exportPath'] = osp.dirname(filename)
+            self.mw.matching.export(filename)
+            self.mw.settings['export_path'] = osp.dirname(filename)

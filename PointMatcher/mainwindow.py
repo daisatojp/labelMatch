@@ -4,32 +4,15 @@ from PyQt5.QtWidgets import *
 from PointMatcher.__init__ import __appname__
 from PointMatcher.widgets import *
 from PointMatcher.actions import *
-from PointMatcher.data.matching import Matching
+from PointMatcher.matching import Matching
 from PointMatcher.settings import Settings
-from PointMatcher.utils.struct import struct
-from PointMatcher.utils.qt import addActions
+from PointMatcher.utils import *
 
 
-class WindowMixin(object):
-
-    def menu(self, title, actions=None):
-        menu = self.menuBar().addMenu(title)
-        if actions:
-            addActions(menu, actions)
-        return menu
-
-    def toolbar(self, title, actions=None):
-        toolbar = ToolBar(title)
-        toolbar.setObjectName(u'%sToolBar' % title)
-        # toolbar.setOrientation(Qt.Vertical)
-        toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-        if actions:
-            addActions(toolbar, actions)
-        self.addToolBar(Qt.LeftToolBarArea, toolbar)
-        return toolbar
+QMB = QMessageBox
 
 
-class MainWindow(QMainWindow, WindowMixin):
+class MainWindow(QMainWindow):
 
     def __init__(self):
         super(MainWindow, self).__init__()
@@ -38,69 +21,79 @@ class MainWindow(QMainWindow, WindowMixin):
         self.settings.load()
 
         self.matching = None
-        self.imageDir = self.settings.get('imageDir', None)
-        self.annotDir = self.settings.get('annotDir', None)
+        self.image_dir = self.settings.get('image_dir', None)
+        self.annot_dir = self.settings.get('annot_dir', None)
 
-        self.viewIWidget = ViewIWidget(parent=self)
-        self.viewIWidget.itemClicked_connect(self.viewitemClicked)
-        self.viewJWidget = ViewJWidget(parent=self)
-        self.viewJWidget.itemClicked_connect(self.viewitemClicked)
+        self.view_i_widget = ViewIWidget(parent=self)
+        self.view_i_widget.itemClicked_connect(self.viewitem_clicked)
+        self.view_j_widget = ViewJWidget(parent=self)
+        self.view_j_widget.itemClicked_connect(self.viewitem_clicked)
 
         self.canvas = Canvas(self)
-        self.zoomWidget = ZoomWidget(self)
-        self.scrollWidget = ScrollWidget(self)
-        self.canvas.zoomRequest.connect(self.zoomWidget.zoomRequest)
-        self.canvas.scrollRequest.connect(self.scrollWidget.scrollRequest)
+        self.zoom_widget = ZoomWidget(self)
+        self.scroll_widget = ScrollWidget(self)
+        self.canvas.zoom_request.connect(self.zoom_widget.zoom_request)
+        self.canvas.scroll_request.connect(self.scroll_widget.scroll_request)
 
-        self.setCentralWidget(self.scrollWidget)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.viewIWidget)
-        self.addDockWidget(Qt.RightDockWidgetArea, self.viewJWidget)
+        self.setCentralWidget(self.scroll_widget)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.view_i_widget)
+        self.addDockWidget(Qt.RightDockWidgetArea, self.view_j_widget)
 
-        self.actions = struct(
-            newProject=NewProjectAction(self),
-            openImageDir=OpenImageDirAction(self),
-            openAnnotDir=OpenAnnotDirAction(self),
-            save=SaveAction(self),
-            export=ExportAction(self),
-            close=CloseAction(self),
-            quitApp=QuitAppAction(self),
-            openNextView=OpenNextViewAction(self),
-            openPrevView=OpenPrevViewAction(self),
-            editKeypointMode=EditKeypointModeAction(self),
-            editMatchMode=EditMatchModeAction(self),
-            autoSaving=AutoSavingAction(self),
-            showInfo=ShowInfoAction(self))
+        self.new_project_action = NewProjectAction(self)
+        self.open_image_dir_action = OpenImageDirAction(self)
+        self.open_annot_dir_action = OpenAnnotDirAction(self)
+        self.save_action = SaveAction(self)
+        self.export_action = ExportAction(self)
+        self.close_action = CloseAction(self)
+        self.quit_app_action = QuitAppAction(self)
+        self.open_next_view_action = OpenNextViewAction(self)
+        self.open_prev_view_action = OpenPrevViewAction(self)
+        self.edit_keypoint_mode_action = EditKeypointModeAction(self)
+        self.edit_match_mode_action = EditMatchModeAction(self)
+        self.auto_save_action = AutoSaveAction(self)
+        self.show_info_action = ShowInfoAction(self)
 
         self.menus = struct(
-            file=self.menu('&File'),
-            edit=self.menu('&Edit'),
-            view=self.menu('&View'),
-            help=self.menu('&Help'))
+            file=self.menuBar().addMenu('&File'),
+            edit=self.menuBar().addMenu('&Edit'),
+            view=self.menuBar().addMenu('&View'),
+            help=self.menuBar().addMenu('&Help'))
 
-        # setup menus
-        a = self.actions
-        za = self.zoomWidget.actions
-        addActions(
-            self.menus.file,
-            (a.newProject, a.openImageDir, a.openAnnotDir, a.save, a.export, a.close, a.quitApp))
-        addActions(
-            self.menus.edit,
-            (a.editKeypointMode, a.editMatchMode))
-        addActions(
-            self.menus.view,
-            (a.autoSaving,
-             None, za.zoomIn, za.zoomOut, za.zoomOrg, za.zoomFitWindow, za.zoomFitWidth))
-        addActions(
-            self.menus.help,
-            (a.showInfo,))
+        self.menus.file.addAction(self.new_project_action)
+        self.menus.file.addAction(self.open_image_dir_action)
+        self.menus.file.addAction(self.open_annot_dir_action)
+        self.menus.file.addAction(self.save_action)
+        self.menus.file.addAction(self.export_action)
+        self.menus.file.addAction(self.close_action)
+        self.menus.file.addAction(self.quit_app_action)
+        self.menus.edit.addAction(self.edit_keypoint_mode_action)
+        self.menus.edit.addAction(self.edit_match_mode_action)
+        self.menus.view.addAction(self.auto_save_action)
+        self.menus.view.addSeparator()
+        self.menus.view.addAction(self.zoom_widget.zoom_in_action)
+        self.menus.view.addAction(self.zoom_widget.zoom_out_action)
+        self.menus.view.addAction(self.zoom_widget.zoom_org_action)
+        self.menus.view.addAction(self.zoom_widget.zoom_fit_window_action)
+        self.menus.view.addAction(self.zoom_widget.zoom_fit_width_action)
+        self.menus.help.addAction(self.show_info_action)
 
-        # setup tools
-        self.tools = self.toolbar('Tools')
-        addActions(
-            self.tools,
-            (a.openImageDir, a.openAnnotDir, a.save, a.export,
-             None, a.openNextView, a.openPrevView,
-             None, za.zoomIn, za.zoom, za.zoomOut, za.zoomFitWindow, za.zoomFitWidth))
+        self.toolbar = ToolBar('Tools')
+        self.toolbar.setObjectName('ToolBar')
+        self.toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
+        self.toolbar.addAction(self.open_image_dir_action)
+        self.toolbar.addAction(self.open_annot_dir_action)
+        self.toolbar.addAction(self.save_action)
+        self.toolbar.addAction(self.export_action)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.open_next_view_action)
+        self.toolbar.addAction(self.open_prev_view_action)
+        self.toolbar.addSeparator()
+        self.toolbar.addAction(self.zoom_widget.zoom_in_action)
+        self.toolbar.addAction(self.zoom_widget.zoom_action)
+        self.toolbar.addAction(self.zoom_widget.zoom_out_action)
+        self.toolbar.addAction(self.zoom_widget.zoom_fit_window_action)
+        self.toolbar.addAction(self.zoom_widget.zoom_fit_width_action)
+        self.addToolBar(Qt.LeftToolBarArea, self.toolbar)
 
         self.statusBar().showMessage('{} started.'.format(__appname__))
         self.statusBar().show()
@@ -116,70 +109,70 @@ class MainWindow(QMainWindow, WindowMixin):
         self.resize(size)
         self.move(position)
 
-        self.updateTitle()
+        self.update_title()
         self.labelCoordinates = QLabel('')
         self.statusBar().addPermanentWidget(self.labelCoordinates)
-
-    def loadMatching(self):
-        self.matching = Matching(self.annotDir)
-        self.matching.set_update_callback(self.getMatchingUpdateEvent)
-        self.matching.set_dirty_callback(self.getMatchingDirtyEvent)
-        self.viewIWidget.initialize()
-        self.viewJWidget.initialize()
-        view_id_i = self.matching.get_list_of_view_id()[0]
-        view_id_j = self.matching.get_list_of_view_id()[1]
-        self.changePair(view_id_i, view_id_j)
-        self.actions.export.setEnabled(True)
-
-    def viewitemClicked(self, item=None):
-        view_id_i = self.matching.get_list_of_view_id()[self.viewIWidget.get_current_idx()]
-        view_id_j = self.matching.get_list_of_view_id()[self.viewJWidget.get_current_idx()]
-        self.changePair(view_id_i, view_id_j)
-
-    def changePair(self, view_id_i, view_id_j):
-        self.matching.clear_decoration()
-        view_idx_i = self.matching.find_view_idx(view_id_i)
-        view_idx_j = self.matching.find_view_idx(view_id_j)
-        self.matching.set_view(view_id_i, view_id_j)
-        self.viewIWidget.set_current_idx(view_idx_i)
-        self.viewJWidget.set_current_idx(view_idx_j)
-        self.viewJWidget.update_text()
-        self.canvas.updatePixmap()
-        self.canvas.repaint()
-        if self.actions.autoSaving.isChecked():
-            if self.matching.dirty():
-                self.matching.save()
-                self.actions.save.setEnabled(False)
 
     def resizeEvent(self, event):
         super(MainWindow, self).resizeEvent(event)
 
     def paintCanvas(self):
-        self.canvas.scale = 0.01 * self.zoomWidget.spinbox.value()
+        self.canvas.scale = 0.01 * self.zoom_widget.spinbox.value()
         self.canvas.adjustSize()
         self.canvas.update()
 
     def closeEvent(self, event):
-        if not self.mayContinue():
+        if not self.may_continue():
             event.ignore()
-        self.settings['imageDir'] = self.imageDir
-        self.settings['annotDir'] = self.annotDir
+        self.settings['image_dir'] = self.image_dir
+        self.settings['annot_dir'] = self.annot_dir
         self.settings.save()
 
-    def getMatchingUpdateEvent(self):
-        self.viewIWidget.update_text()
-        self.viewJWidget.update_text()
+    def load_matching(self):
+        self.matching = Matching(self.annot_dir)
+        self.matching.set_update_callback(self.get_matching_update_event)
+        self.matching.set_dirty_callback(self.get_matching_dirty_event)
+        self.view_i_widget.initialize()
+        self.view_j_widget.initialize()
+        view_id_i = self.matching.get_list_of_view_id()[0]
+        view_id_j = self.matching.get_list_of_view_id()[1]
+        self.change_pair(view_id_i, view_id_j)
+        self.export_action.setEnabled(True)
 
-    def getMatchingDirtyEvent(self):
-        self.actions.save.setEnabled(True)
+    def viewitem_clicked(self, item=None):
+        view_id_i = self.matching.get_list_of_view_id()[self.view_i_widget.get_current_idx()]
+        view_id_j = self.matching.get_list_of_view_id()[self.view_j_widget.get_current_idx()]
+        self.change_pair(view_id_i, view_id_j)
 
-    def updateTitle(self):
-        if self.annotDir is None:
+    def change_pair(self, view_id_i, view_id_j):
+        self.matching.clear_decoration()
+        view_idx_i = self.matching.find_view_idx(view_id_i)
+        view_idx_j = self.matching.find_view_idx(view_id_j)
+        self.matching.set_view(view_id_i, view_id_j)
+        self.view_i_widget.set_current_idx(view_idx_i)
+        self.view_j_widget.set_current_idx(view_idx_j)
+        self.view_j_widget.update_text()
+        self.canvas.update_pixmap()
+        self.canvas.repaint()
+        if self.auto_save_action.isChecked():
+            if self.matching.dirty():
+                self.matching.save()
+                self.save_action.setEnabled(False)
+
+    def get_matching_update_event(self):
+        self.view_i_widget.update_text()
+        self.view_j_widget.update_text()
+
+    def get_matching_dirty_event(self):
+        self.save_action.setEnabled(True)
+
+    def update_title(self):
+        if self.annot_dir is None:
             self.setWindowTitle(__appname__)
         else:
-            self.setWindowTitle('{} [{}]'.format(__appname__, self.annotDir))
+            self.setWindowTitle('{} [{}]'.format(__appname__, self.annot_dir))
 
-    def updateStatusMessage(self):
+    def update_status_message(self):
         if self.matching is not None:
             vid = None
             kid = None
@@ -197,23 +190,21 @@ class MainWindow(QMainWindow, WindowMixin):
                 kid = self.matching.selected_id_j
             if vid is not None and kid is not None:
                 keypoint = self.matching.get_keypoint(vid, kid)
-                self.statusBar().showMessage('view_id={}, keypoint_id={}, group_id={}, x={:0.1f}, y={:0.1f}'.format(
-                    vid, kid, keypoint['group_id'], keypoint['pos'][0], keypoint['pos'][1]))
+                self.statusBar().showMessage(
+                    'view_id={}, keypoint_id={}, group_id={}, x={:0.1f}, y={:0.1f}'.format(
+                        vid, kid, keypoint['group_id'], keypoint['pos'][0], keypoint['pos'][1]))
                 return
         self.statusBar().showMessage('')
 
-    def mayContinue(self):
-        Yes = QMessageBox.Yes
-        No = QMessageBox.No
-        Cancel = QMessageBox.Cancel
+    def may_continue(self):
         msg = 'You have unsaved changes, would you like to save them and proceed?'
         if self.matching is not None:
             if self.matching.dirty():
-                saveChanges = QMessageBox.warning(self, 'Attention', msg, Yes | No | Cancel)
-                if saveChanges == Yes:
+                save_changes = QMB.warning(self, 'Attention', msg, QMB.Yes | QMB.No | QMB.Cancel)
+                if save_changes == QMB.Yes:
                     self.matching.save()
                     return True
-                elif saveChanges == No:
+                elif save_changes == QMB.No:
                     return True
                 else:
                     return False

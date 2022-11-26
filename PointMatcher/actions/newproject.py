@@ -1,20 +1,14 @@
 import os
 import os.path as osp
 import json
-from PyQt5.QtCore import Qt
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction
-from PyQt5.QtWidgets import QDialog
-from PyQt5.QtWidgets import QDialogButtonBox
-from PyQt5.QtWidgets import QFileDialog
-from PyQt5.QtWidgets import QHBoxLayout, QVBoxLayout
-from PyQt5.QtWidgets import QLabel
-from PyQt5.QtWidgets import QLineEdit
-from PyQt5.QtWidgets import QPushButton
-from PointMatcher.utils.filesystem import icon_path, scan_all_images
+from PyQt5.QtCore import *
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+from PointMatcher.utils import *
 
 
 QDBB = QDialogButtonBox
+QFD = QFileDialog
 
 
 class NewProjectDialog(QDialog):
@@ -22,61 +16,61 @@ class NewProjectDialog(QDialog):
     def __init__(self, parent=None):
         super(NewProjectDialog, self).__init__(parent)
 
-        labelOpenImageDir = QLabel('Image Directory')
-        self.editOpenImageDir = QLineEdit()
-        buttonOpenImageDir = QPushButton(QIcon(icon_path('open')), 'open', self)
-        buttonOpenImageDir.clicked.connect(self.popOpenImageDir)
+        label_open_image_dir = QLabel('Image Directory')
+        self.ledit_open_image_dir = QLineEdit()
+        button_open_image_dir = QPushButton(QIcon(icon_path('open')), 'open', self)
+        button_open_image_dir.clicked.connect(self.pop_open_image_dir)
 
-        labelOpenAnnotDir = QLabel('Annotation Directory')
-        self.editOpenAnnotDir = QLineEdit()
-        buttonOpenAnnotDir = QPushButton(QIcon(icon_path('open')), 'open', self)
-        buttonOpenAnnotDir.clicked.connect(self.popOpenAnnotDir)
+        label_open_annot_dir = QLabel('Annotation Directory')
+        self.ledit_open_annot_dir = QLineEdit()
+        button_open_annot_dir = QPushButton(QIcon(icon_path('open')), 'open', self)
+        button_open_annot_dir.clicked.connect(self.pop_open_annot_dir)
 
-        self.buttonBox = bb = QDBB(QDBB.Ok | QDBB.Cancel, Qt.Horizontal, self)
-        bb.button(QDBB.Ok).setIcon(QIcon(osp.join('resources', 'icons', 'done.png')))
-        bb.button(QDBB.Cancel).setIcon(QIcon(osp.join('recources', 'icons', 'undo.png')))
-        bb.accepted.connect(self.accept)
-        bb.rejected.connect(self.reject)
+        self.bb = QDBB(QDBB.Ok | QDBB.Cancel, Qt.Horizontal, self)
+        self.bb.button(QDBB.Ok).setIcon(QIcon(osp.join('resources', 'icons', 'done.png')))
+        self.bb.button(QDBB.Cancel).setIcon(QIcon(osp.join('recources', 'icons', 'undo.png')))
+        self.bb.accepted.connect(self.accept)
+        self.bb.rejected.connect(self.reject)
 
-        layoutH1 = QHBoxLayout()
-        layoutH1.addWidget(labelOpenImageDir)
-        layoutH1.addWidget(self.editOpenImageDir)
-        layoutH1.addWidget(buttonOpenImageDir)
-        layoutH2 = QHBoxLayout()
-        layoutH2.addWidget(labelOpenAnnotDir)
-        layoutH2.addWidget(self.editOpenAnnotDir)
-        layoutH2.addWidget(buttonOpenAnnotDir)
+        hlayout1 = QHBoxLayout()
+        hlayout1.addWidget(label_open_image_dir)
+        hlayout1.addWidget(self.ledit_open_image_dir)
+        hlayout1.addWidget(button_open_image_dir)
+        hlayout2 = QHBoxLayout()
+        hlayout2.addWidget(label_open_annot_dir)
+        hlayout2.addWidget(self.ledit_open_annot_dir)
+        hlayout2.addWidget(button_open_annot_dir)
 
         layout = QVBoxLayout()
-        layout.addLayout(layoutH1)
-        layout.addLayout(layoutH2)
-        layout.addWidget(bb)
+        layout.addLayout(hlayout1)
+        layout.addLayout(hlayout2)
+        layout.addWidget(self.bb)
 
         self.setLayout(layout)
 
-    def popOpenImageDir(self):
-        defaultImageDir = '.'
-        if osp.exists(self.editOpenImageDir.text()):
-            defaultImageDir = self.editOpenImageDir.text()
-        openImageDir = QFileDialog.getExistingDirectory(
-            self, 'Open Image Directory', defaultImageDir,
-            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
-        self.editOpenImageDir.setText(openImageDir)
+    def pop_open_image_dir(self):
+        default_image_dir = '.'
+        if osp.exists(self.ledit_open_image_dir.text()):
+            default_image_dir = self.ledit_open_image_dir.text()
+        open_image_dir = QFD.getExistingDirectory(
+            self, 'Open Image Directory', default_image_dir,
+            QFD.DontUseNativeDialog | QFD.ShowDirsOnly | QFD.DontResolveSymlinks)
+        self.ledit_open_image_dir.setText(open_image_dir)
 
-    def popOpenAnnotDir(self):
-        defaultAnnotDir = '.'
-        if osp.exists(self.editOpenAnnotDir.text()):
-            defaultAnnotDir = self.editOpenAnnotDir.text()
-        openAnnotDir = QFileDialog.getExistingDirectory(
-            self, 'Open Annotation Directory', defaultAnnotDir,
-            QFileDialog.ShowDirsOnly | QFileDialog.DontResolveSymlinks)
-        self.editOpenAnnotDir.setText(openAnnotDir)
+    def pop_open_annot_dir(self):
+        default_annot_dir = '.'
+        if osp.exists(self.ledit_open_annot_dir.text()):
+            default_annot_dir = self.ledit_open_annot_dir.text()
+        open_annot_dir = QFD.getExistingDirectory(
+            self, 'Open Annotation Directory', default_annot_dir,
+            QFD.DontUseNativeDialog | QFD.ShowDirsOnly | QFD.DontResolveSymlinks)
+        self.ledit_open_annot_dir.setText(open_annot_dir)
 
-    def popUp(self, openImageDir='', openAnnotDir=''):
-        self.editOpenImageDir.setText(openImageDir)
-        self.editOpenAnnotDir.setText(openAnnotDir)
+    def popup(self, open_image_dir='', open_annot_dir=''):
+        self.ledit_open_image_dir.setText(open_image_dir)
+        self.ledit_open_annot_dir.setText(open_annot_dir)
         if self.exec_():
-            return self.editOpenImageDir.text(), self.editOpenAnnotDir.text()
+            return self.ledit_open_image_dir.text(), self.ledit_open_annot_dir.text()
         else:
             return None
 
@@ -85,36 +79,37 @@ class NewProjectAction(QAction):
 
     def __init__(self, parent):
         super(NewProjectAction, self).__init__('New Project', parent)
-        self.p = parent
+        self.p = parent  # MainWindow
+        self.mw = self.p  # MainWindow
 
         self.setIcon(QIcon(icon_path('open')))
         self.setShortcut('Ctrl+N')
-        self.triggered.connect(self.newProject)
+        self.triggered.connect(self.new_project)
         self.setEnabled(True)
 
-        self.newProjectDialog = NewProjectDialog(self.p)
+        self.new_project_dialog = NewProjectDialog(self.p)
 
-    def newProject(self, _value=False):
-        if not self.p.mayContinue():
+    def new_project(self, _value=False):
+        if not self.mw.may_continue():
             return
 
-        ret = self.newProjectDialog.popUp()
+        ret = self.new_project_dialog.popup()
         if ret is None:
             return
         assert osp.isdir(ret[0])
 
-        self.p.imageDir, self.p.annotDir = ret
+        self.mw.image_dir, self.mw.annot_dir = ret
 
-        views_dir = osp.join(self.p.annotDir, 'views')
+        views_dir = osp.join(self.mw.annot_dir, 'views')
         if not osp.exists(views_dir):
             os.makedirs(views_dir)
-        image_paths = scan_all_images(self.p.imageDir)
+        image_paths = scan_all_images(self.mw.image_dir)
         for i, image_path in enumerate(image_paths):
             with open(osp.join(views_dir, 'view_{}.json'.format(i)), 'w') as f:
                 json.dump({
                     'id': i,
-                    'filename': image_path[len(self.p.imageDir) + len(os.sep):].split(os.sep),
+                    'filename': image_path[len(self.mw.image_dir) + len(os.sep):].split(os.sep),
                     'keypoints': []},
                     f, indent=4)
-        with open(osp.join(self.p.annotDir, 'groups.json'), 'w') as f:
+        with open(osp.join(self.mw.annot_dir, 'groups.json'), 'w') as f:
             json.dump({'groups': []}, f, indent=4)

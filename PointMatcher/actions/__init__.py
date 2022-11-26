@@ -7,7 +7,7 @@ from PointMatcher.actions.close import CloseAction
 from PointMatcher.actions.quitapp import QuitAppAction
 from PointMatcher.actions.opennextview import OpenNextViewAction
 from PointMatcher.actions.openprevview import OpenPrevViewAction
-from PointMatcher.actions.autosaving import AutoSavingAction
+from PointMatcher.actions.autosaving import AutoSaveAction
 from PointMatcher.actions.editkeypointmode import EditKeypointModeAction
 from PointMatcher.actions.editmatchmode import EditMatchModeAction
 from PointMatcher.actions.showinfo import ShowInfoAction

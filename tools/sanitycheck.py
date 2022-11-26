@@ -4,7 +4,7 @@ import argparse
 import json
 from glob import glob
 from collections import Counter
-from PointMatcher.data.matching import Matching
+from PointMatcher.matching import Matching
 
 
 def main():

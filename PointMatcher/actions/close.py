@@ -1,20 +1,21 @@
 import os.path as osp
-from PyQt5.QtGui import QIcon
-from PyQt5.QtWidgets import QAction
-from PointMatcher.utils.filesystem import icon_path
+from PyQt5.QtGui import *
+from PyQt5.QtWidgets import *
+from PointMatcher.utils import *
 
 
 class CloseAction(QAction):
 
     def __init__(self, parent):
         super(CloseAction, self).__init__('Close', parent)
-        self.p = parent
+        self.p = parent  # MainWindow
+        self.mw = self.p  # MainWindow
 
         self.setIcon(QIcon(icon_path('close')))
         self.setShortcut('Ctrl+W')
-        self.triggered.connect(self._close)
+        self.triggered.connect(self.close)
         self.setEnabled(True)
 
-    def _close(self, _value=False):
-        if not self.parent.mayContinue():
+    def close(self, _value=False):
+        if not self.mw.may_continue():
             return
