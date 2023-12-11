@@ -4,7 +4,7 @@ import json
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from PointMatcher.utils import *
+from labelMatch.utils import *
 
 
 QDBB = QDialogButtonBox

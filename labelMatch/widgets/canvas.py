@@ -5,7 +5,7 @@ import cv2
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from PointMatcher.matching_painter import MatchingPainter
+from labelMatch.matching_painter import MatchingPainter
 
 
 QMB = QMessageBox

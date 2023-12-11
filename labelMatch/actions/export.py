@@ -1,7 +1,7 @@
 import os.path as osp
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from PointMatcher.utils import *
+from labelMatch.utils import *
 
 
 QFD = QFileDialog

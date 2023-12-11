@@ -2,7 +2,7 @@ from functools import partial
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from PointMatcher.utils import *
+from labelMatch.utils import *
 
 
 class ZoomWidget:

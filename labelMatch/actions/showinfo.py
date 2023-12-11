@@ -1,8 +1,8 @@
 import os.path as osp
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
-from PointMatcher import __appname__, __version__
-from PointMatcher.utils import *
+from labelMatch import __appname__, __version__
+from labelMatch.utils import *
 
 
 QMB = QMessageBox

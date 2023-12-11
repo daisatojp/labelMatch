@@ -1,12 +1,12 @@
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
-from PointMatcher.__init__ import __appname__
-from PointMatcher.widgets import *
-from PointMatcher.actions import *
-from PointMatcher.matching import Matching
-from PointMatcher.settings import Settings
-from PointMatcher.utils import *
+from labelMatch.__init__ import __appname__
+from labelMatch.widgets import *
+from labelMatch.actions import *
+from labelMatch.matching import Matching
+from labelMatch.settings import Settings
+from labelMatch.utils import *
 
 
 QMB = QMessageBox

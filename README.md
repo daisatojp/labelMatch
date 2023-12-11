@@ -20,7 +20,19 @@ You can use binary file. Please download from the [Release](https://github.com/d
 ```bash
 git clone https://github.com/daisatojp/labelMatch.git --recursive
 cd labelMatch
-pip install numpy opencv-python pyqt5
+
+# I like virtualenv
+python3 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+pip install numpy \
+            opencv-python-headless \
+            tqdm \
+            PyQt5 \
+            PyQt5-stubs
+
+export PYTHONPATH="."
 python labelMatch/__main__.py
 ```
 
