@@ -1,10 +1,11 @@
+.env
 .idea
 .venv
+.vscode
+
 build
 dist
-*.egg-info
 
+*.egg-info
 *.json
 *.pyc
-
-docs/_build

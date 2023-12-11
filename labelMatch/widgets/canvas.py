@@ -185,7 +185,7 @@ class Canvas(QWidget):
         self.update()
 
     def mouseDoubleClickEvent(self, ev):
-        pos = self.transformPos(ev.pos())
+        pos = self.transform_pos(ev.pos())
         pos_in_view_i = self.get_pos_in_view_i(pos.x(), pos.y())
         pos_in_view_j = self.get_pos_in_view_j(pos.x(), pos.y())
 
