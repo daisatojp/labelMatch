@@ -1,6 +1,6 @@
-# PointMatcher
+# labelMatch
 
- PointMatcher is a graphical corresponding point annotation tool. In computer vision, normally we decide correspondences of points automatically by a feature point extraction algorithm (e.g. SIFT) and a feature matching algorithm (e.g. Brute Force). But when you want to do it manually, you can use this tool!
+ labelMatch is a graphical corresponding point annotation tool. In computer vision, normally we decide correspondences of points automatically by a feature point extraction algorithm (e.g. SIFT) and a feature matching algorithm (e.g. Brute Force). But when you want to do it manually, you can use this tool!
 
 <p align="center"><img src="demo/main_window.jpg" alt="demo image" width="460"></img></p>
 
@@ -13,15 +13,15 @@
 
 ### with Binary (Windows only)
 
-You can use binary file. Please download from the [Release](https://github.com/daisatojp/PointMatcher/releases).
+You can use binary file. Please download from the [Release](https://github.com/daisatojp/labelMatch/releases).
 
 ### with git-clone (Any OS)
 
 ```bash
-git clone https://github.com/daisatojp/PointMatcher.git --recursive
-cd PointMatcher
+git clone https://github.com/daisatojp/labelMatch.git --recursive
+cd labelMatch
 pip install numpy opencv-python pyqt5
-python PointMatcher/__main__.py
+python labelMatch/__main__.py
 ```
 
 ### Tutorial
@@ -67,5 +67,5 @@ You can export annotated data to one json file in the following format.
 
 ## Acknowledgment
 
-* [labelimg](https://github.com/tzutalin/labelImg) as a reference
+* [labelImg](https://github.com/tzutalin/labelImg) as a reference
 * [Chateau de Sceaux Image Dataset](https://github.com/openMVG/ImageDataset_SceauxCastle) to test software
