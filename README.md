@@ -47,7 +47,7 @@ pip install loguru `
 # Linux
 export PYTHONPATH="."
 # Windows
-set PYTHONPATH="."
+$Env:PYTHONPATH = "."
 
 python labelMatch/__main__.py
 ```
