@@ -1,7 +1,6 @@
 .env
 .idea
 .venv
-.vscode
 
 build
 dist
@@ -9,3 +8,7 @@ dist
 *.egg-info
 *.json
 *.pyc
+
+!develop/.vscode/launch.json
+!develop/.vscode/settings.json
+!develop/.env
