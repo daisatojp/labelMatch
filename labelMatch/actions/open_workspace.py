@@ -90,7 +90,8 @@ class OpenWorkspaceDialog(QDialog):
             self.ledit_annot_dir.setText(self.mw.annot_dir)
         if (self.mw.image_dir is not None) and \
              osp.exists(self.mw.image_dir):
-            self.ledit_image_dir.setText(self.mw.image_dir)        
+            self.ledit_image_dir.setText(self.mw.image_dir)
+        self.checkbox_new_annot_dir.setChecked(False)
         if not self.exec_():
             return False
         if self.checkbox_new_annot_dir.isChecked():

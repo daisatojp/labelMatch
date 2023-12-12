@@ -74,7 +74,6 @@ class MainWindow(QMainWindow):
         self.menus.view.addAction(self.zoom_widget.zoom_out_action)
         self.menus.view.addAction(self.zoom_widget.zoom_org_action)
         self.menus.view.addAction(self.zoom_widget.zoom_fit_window_action)
-        self.menus.view.addAction(self.zoom_widget.zoom_fit_width_action)
         self.menus.help.addAction(self.show_info_action)
 
         self.toolbar = ToolBar('Tools')
@@ -91,8 +90,8 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.zoom_widget.zoom_in_action)
         self.toolbar.addAction(self.zoom_widget.zoom_action)
         self.toolbar.addAction(self.zoom_widget.zoom_out_action)
+        self.toolbar.addAction(self.zoom_widget.zoom_org_action)
         self.toolbar.addAction(self.zoom_widget.zoom_fit_window_action)
-        self.toolbar.addAction(self.zoom_widget.zoom_fit_width_action)
         self.addToolBar(Qt.LeftToolBarArea, self.toolbar)
 
         self.statusBar().showMessage('{} started.'.format(__appname__))
@@ -150,6 +149,7 @@ class MainWindow(QMainWindow):
         self.change_pair(view_id_i, view_id_j)
         self.export_action.setEnabled(True)
         self.update_title()
+        self.zoom_widget.enable_actions()
 
     def close_workspace(self):
         self.matching = None
@@ -158,6 +158,7 @@ class MainWindow(QMainWindow):
         self.canvas.clear_pixmap()
         self.canvas.repaint()
         self.update_title()
+        self.zoom_widget.disable_actions()
 
     def viewitem_clicked(self, item=None):
         view_id_i = self.matching.get_list_of_view_id()[self.view_i_widget.get_current_idx()]

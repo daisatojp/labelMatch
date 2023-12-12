@@ -47,20 +47,21 @@ class ZoomWidget:
             self.p, 'Fit Window', self.set_fit_window,
             'Ctrl+F', 'fit-window',
             'Zoom follows window size',
-            checkable=True, enabled=False)
-        self.zoom_fit_width_action = new_action(
-            self.p, 'Fit Width', self.set_fit_width,
-            'Ctrl+Shift+F', 'fit-width',
-            'Zoom follows window width',
-            checkable=True, enabled=False)
-
-        self.zoom_mode = self.ZOOM_MANUAL
-        self.scalers = {
-            self.ZOOM_MANUAL: lambda: 1,
-            self.ZOOM_FIT_WINDOW: self.scale_fit_window,
-            self.ZOOM_FIT_WIDTH: self.scale_fit_width}
+            enabled=False)
 
         self.spinbox.valueChanged.connect(self.p.paintCanvas)
+
+    def enable_actions(self):
+        self.zoom_in_action.setEnabled(True)
+        self.zoom_out_action.setEnabled(True)
+        self.zoom_org_action.setEnabled(True)
+        self.zoom_fit_window_action.setEnabled(True)
+
+    def disable_actions(self):
+        self.zoom_in_action.setEnabled(False)
+        self.zoom_out_action.setEnabled(False)
+        self.zoom_org_action.setEnabled(False)
+        self.zoom_fit_window_action.setEnabled(False)
 
     def minimumSizeHint(self):
         height = self.spinbox.minimumSizeHint().height()
@@ -69,28 +70,13 @@ class ZoomWidget:
         return QSize(width, height)
 
     def set_zoom(self, value):
-        self.zoom_fit_window_action.setChecked(False)
-        self.zoom_fit_width_action.setChecked(False)
-        self.zoom_mode = self.ZOOM_MANUAL
         self.spinbox.setValue(value)
 
     def add_zoom(self, increment=10):
         self.set_zoom(self.spinbox.value() + increment)
 
     def set_fit_window(self, value=True):
-        if value:
-            self.zoom_fit_width_action.setChecked(False)
-        self.zoom_mode = self.ZOOM_FIT_WINDOW if value else self.ZOOM_MANUAL
-        self.adjustScale()
-
-    def set_fit_width(self, value=True):
-        if value:
-            self.zoom_fit_window_action.setChecked(False)
-        self.zoom_mode = self.ZOOM_FIT_WIDTH if value else self.ZOOM_MANUAL
-        self.adjustScale()
-
-    def adjust_scale(self, initial=False):
-        value = self.scalers[self.ZOOM_FIT_WINDOW if initial else self.zoom_mode]()
+        value = self.scale_fit_window()
         self.spinbox.setValue(int(100 * value))
 
     def scale_fit_window(self):
@@ -104,11 +90,6 @@ class ZoomWidget:
         h2 = self.mw.canvas.pixmap.height() - 0.0
         a2 = w2 / h2
         return w1 / w2 if a2 >= a1 else h1 / h2
-
-    def scale_fit_width(self):
-        # The epsilon does not seem to work too well here.
-        w = self.mw.centralWidget().width() - 2.0
-        return w / self.mw.canvas.pixmap.width()
 
     def zoom_request(self, delta):
         # get the current scrollbar positions
