@@ -1,3 +1,0 @@
-[submodule "sample/ImageDataset_SceauxCastle"]
-	path = sample/ImageDataset_SceauxCastle
-	url = https://github.com/openMVG/ImageDataset_SceauxCastle.git
