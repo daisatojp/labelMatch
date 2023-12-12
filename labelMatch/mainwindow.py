@@ -1,3 +1,7 @@
+import json
+import os
+import os.path as osp
+from loguru import logger
 from PyQt5.QtGui import *
 from PyQt5.QtCore import *
 from PyQt5.QtWidgets import *
@@ -21,8 +25,8 @@ class MainWindow(QMainWindow):
         self.settings.load()
 
         self.matching = None
-        self.image_dir = self.settings.get('image_dir', None)
         self.annot_dir = self.settings.get('annot_dir', None)
+        self.image_dir = self.settings.get('image_dir', None)
 
         self.view_i_widget = ViewIWidget(parent=self)
         self.view_i_widget.itemClicked_connect(self.viewitem_clicked)
@@ -39,13 +43,11 @@ class MainWindow(QMainWindow):
         self.addDockWidget(Qt.RightDockWidgetArea, self.view_i_widget)
         self.addDockWidget(Qt.RightDockWidgetArea, self.view_j_widget)
 
-        self.new_project_action = NewProjectAction(self)
-        self.open_image_dir_action = OpenImageDirAction(self)
-        self.open_annot_dir_action = OpenAnnotDirAction(self)
         self.save_action = SaveAction(self)
         self.export_action = ExportAction(self)
         self.close_action = CloseAction(self)
         self.quit_app_action = QuitAppAction(self)
+        self.open_workspace_action = OpenWorkspaceAction(self)
         self.open_next_view_action = OpenNextViewAction(self)
         self.open_prev_view_action = OpenPrevViewAction(self)
         self.edit_keypoint_mode_action = EditKeypointModeAction(self)
@@ -59,9 +61,7 @@ class MainWindow(QMainWindow):
             view=self.menuBar().addMenu('&View'),
             help=self.menuBar().addMenu('&Help'))
 
-        self.menus.file.addAction(self.new_project_action)
-        self.menus.file.addAction(self.open_image_dir_action)
-        self.menus.file.addAction(self.open_annot_dir_action)
+        self.menus.file.addAction(self.open_workspace_action)
         self.menus.file.addAction(self.save_action)
         self.menus.file.addAction(self.export_action)
         self.menus.file.addAction(self.close_action)
@@ -80,8 +80,7 @@ class MainWindow(QMainWindow):
         self.toolbar = ToolBar('Tools')
         self.toolbar.setObjectName('ToolBar')
         self.toolbar.setToolButtonStyle(Qt.ToolButtonTextUnderIcon)
-        self.toolbar.addAction(self.open_image_dir_action)
-        self.toolbar.addAction(self.open_annot_dir_action)
+        self.toolbar.addAction(self.open_workspace_action)
         self.toolbar.addAction(self.save_action)
         self.toolbar.addAction(self.export_action)
         self.toolbar.addSeparator()
@@ -124,12 +123,20 @@ class MainWindow(QMainWindow):
     def closeEvent(self, event):
         if not self.may_continue():
             event.ignore()
-        self.settings['image_dir'] = self.image_dir
         self.settings['annot_dir'] = self.annot_dir
+        self.settings['image_dir'] = self.image_dir
         self.settings.save()
 
-    def load_matching(self):
-        self.matching = Matching(self.annot_dir)
+    def open_workspace(self):
+        if not osp.exists(self.annot_dir):
+            logger.error('{} does not exist.'
+                         .format(self.annot_dir))
+            return
+        if not osp.exists(self.image_dir):
+            logger.error('{} does not exist.'
+                         .format(self.image_dir))
+            return
+        self.matching = Matching(self.annot_dir, self.image_dir)
         self.matching.set_update_callback(self.get_matching_update_event)
         self.matching.set_dirty_callback(self.get_matching_dirty_event)
         self.view_i_widget.initialize()
@@ -167,10 +174,14 @@ class MainWindow(QMainWindow):
         self.save_action.setEnabled(True)
 
     def update_title(self):
-        if self.annot_dir is None:
-            self.setWindowTitle(__appname__)
+        if (self.annot_dir is not None) and \
+           (self.image_dir is not None):
+            title = '{} (wrk={}, img={})'.format(
+                __appname__, self.annot_dir, self.image_dir)
         else:
-            self.setWindowTitle('{} [{}]'.format(__appname__, self.annot_dir))
+            title = '{}'.format(
+                __appname__)
+        self.setWindowTitle(title)
 
     def update_status_message(self):
         if self.matching is not None:

@@ -1,22 +1,21 @@
 import os
 import os.path as osp
-import copy
-from functools import cmp_to_key
 from collections import Counter
 from collections import OrderedDict
 import json
-from glob import glob
 from tqdm import tqdm
+from labelMatch.utils import *
 
 
 class Matching:
 
-    def __init__(self, annot_dir):
+    def __init__(self, annot_dir, image_dir):
         self.annot_dir = annot_dir
+        self.image_dir = image_dir
         self._groups = None
         self._group_id_to_idx = None
-        self._viewlist = None
-        self._matchcounter = None
+        self._viewlist = OrderedDict()
+        self._matchcounter = {}
         self._view_i = None
         self._view_j = None
         self._matches = None
@@ -33,43 +32,49 @@ class Matching:
         self._dirty_views = {}
         self._dirty_callback = None
 
-        self.load_groups()
-        self.load_viewlist()
-        self.initialize_matchcounter()
-        self.set_view(self.get_list_of_view_id()[0], self.get_list_of_view_id()[1])
-
-    def load_groups(self):
         with open(self.get_groups_path(), 'r') as f:
             self._groups = json.load(f)
         self.update_group_id_to_idx()
 
-    def load_viewlist(self):
-        view_paths = glob(osp.join(self.get_views_dir(), '*.json'))
-        self._viewlist = OrderedDict()
-        for view_path in view_paths:
-            with open(view_path, 'r') as f:
+        view_ids = []
+        view_image_files = []
+        view_dir = osp.join(self.annot_dir, 'views')
+        view_files = list_by_ext(view_dir, '.json')
+        for view_file in view_files:
+            with open(view_file, 'r') as f:
                 v = json.load(f)
+            image_file = osp.join(image_dir, *v['filename'])
+            view_ids.append(v['id'])
+            view_image_files.append(image_file)
+            if not osp.exists(image_file):
+                continue
             self._viewlist[v['id']] = {
-                'view_path': view_path,
+                'view_file': view_file,
                 'filename': osp.join(*v['filename']),
                 'keypoint_count': len(v['keypoints'])}
-        self._viewlist = OrderedDict(sorted(self._viewlist.items(), key=lambda x: x[0]))
+        image_files = scan_all_images(self.image_dir)
+        view_ids_max = max(view_ids)
+        for image_file in image_files:
+            if image_file in view_image_files:
+                continue
+            view_id = view_ids_max + 1
+            view_ids_max = view_id
+            view_file = osp.join(view_dir, 'view_{}.json'.format(view_id))
+            v = {
+                'id': view_id,
+                'filename': image_file[len(self.image_dir) + len(os.sep):].split(os.sep),
+                'keypoints': []}
+            with open(view_file, 'w') as f:
+                json.dump(v, f, indent=4)
+            self._viewlist[v['id']] = {
+                'view_file': view_file,
+                'filename': osp.join(*v['filename']),
+                'keypoint_count': len(v['keypoints'])}
 
-    def load_view(self, view_id):
-        if view_id in self._dirty_views:
-            return self._dirty_views[view_id]
-        else:
-            with open(self._viewlist[view_id]['view_path'], 'r') as f:
-                x = json.load(f)
-            return x
+        self._viewlist = OrderedDict(
+            sorted(self._viewlist.items(),
+                   key=lambda x: x[0]))
 
-    def update_group_id_to_idx(self):
-        self._group_id_to_idx = {}
-        for idx, group in enumerate(self._groups['groups']):
-            self._group_id_to_idx[group['id']] = idx
-
-    def initialize_matchcounter(self):
-        self._matchcounter = {}
         for group in self._groups['groups']:
             for i in range(0, len(group['keypoints'])):
                 for j in range(i + 1, len(group['keypoints'])):
@@ -77,6 +82,22 @@ class Matching:
                     view_id_j = group['keypoints'][j][0]
                     self.increment_matchcounter(view_id_i, view_id_j)
                     self.increment_matchcounter(view_id_j, view_id_i)
+    
+        self.set_view(self.get_list_of_view_id()[0],
+                      self.get_list_of_view_id()[1])    
+
+    def load_view(self, view_id):
+        if view_id in self._dirty_views:
+            return self._dirty_views[view_id]
+        else:
+            with open(self._viewlist[view_id]['view_file'], 'r') as f:
+                x = json.load(f)
+            return x
+
+    def update_group_id_to_idx(self):
+        self._group_id_to_idx = {}
+        for idx, group in enumerate(self._groups['groups']):
+            self._group_id_to_idx[group['id']] = idx
 
     def increment_matchcounter(self, view_id_i, view_id_j):
         if view_id_i not in self._matchcounter:
@@ -449,7 +470,7 @@ class Matching:
                 json.dump(self._groups, f)
             self._dirty_groups = False
         for key, val in self._dirty_views.items():
-            with open(self._viewlist[val['id']]['view_path'], 'w') as f:
+            with open(self._viewlist[val['id']]['view_file'], 'w') as f:
                 json.dump(val, f, indent=4)
             self._dirty_views = {}
 

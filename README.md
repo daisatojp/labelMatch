@@ -27,6 +27,7 @@ source .venv/bin/activate
 
 python -m pip install --upgrade pip
 pip install numpy \
+            loguru \
             opencv-python-headless \
             tqdm \
             PyQt5 \

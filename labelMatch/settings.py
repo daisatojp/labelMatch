@@ -1,13 +1,21 @@
 import os
 import os.path as osp
-import pickle
+import json
+from PyQt5.QtWidgets import QMessageBox as QMB
+from labelMatch.defines import *
 
 
 class Settings(object):
+
     def __init__(self):
-        home = osp.expanduser('~')
-        self.data = {}
-        self.path = osp.join(home, '.PointMatcherSettings.pkl')
+        self.data = None
+        if not osp.exists(SETTINGS_FILE):
+            with open(SETTINGS_FILE, 'w') as f:
+                json.dump({
+                    'annot_dir': None,
+                    'image_dir': None
+                }, f, indent=4)
+        self.load()
 
     def __setitem__(self, key, value):
         self.data[key] = value
@@ -15,17 +23,34 @@ class Settings(object):
     def __getitem__(self, key):
         return self.data[key]
 
-    def get(self, key, default=None):
-        if key in self.data:
-            return self.data[key]
-        return default
-
     def save(self):
-        with open(self.path, 'wb') as f:
-            pickle.dump(self.data, f, pickle.HIGHEST_PROTOCOL)
+        with open(SETTINGS_FILE, 'w') as f:
+            json.dump(self.data, f, indent=4)
 
     def load(self):
-        if osp.exists(self.path):
-            with open(self.path, 'rb') as f:
-                self.data = pickle.load(f)
-                return True
+        with open(SETTINGS_FILE, 'r') as f:
+            self.data = json.load(f)
+
+    def get(self, keys, default=None):
+        if type(keys) is str:
+            keys = [keys]
+        v = self.data
+        for key in keys:
+            if key not in v:
+                v = None
+                break
+            v = v[key]
+        if v is None:
+            return default
+        else:
+            return v
+
+    def set(self, keys, value):
+        if type(keys) is str:
+            keys = [keys]
+        v = self.data
+        for key in keys[:-1]:
+            if key not in v:
+                v[key] = {}
+            v = v[key]
+        v[keys[-1]] = value

@@ -26,9 +26,9 @@ def main():
     num_2 = 0
     keys_2 = []
     key_num_total = 0
-    view_paths = glob(osp.join(args.annot_dir, 'views', '*.json'))
-    for view_path in view_paths:
-        with open(view_path, 'r') as f:
+    view_files = glob(osp.join(args.annot_dir, 'views', '*.json'))
+    for view_file in view_files:
+        with open(view_file, 'r') as f:
             view = json.load(f)
         key_num_total += len(view['keypoints'])
         for keypoint in view['keypoints']:

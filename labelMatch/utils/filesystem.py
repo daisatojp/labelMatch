@@ -1,16 +1,31 @@
 import sys
 import os
 import os.path as osp
+from glob import glob
 from labelMatch.utils.sort import natural_sort
 
 
 here = osp.dirname(osp.abspath(__file__))
 
 
+def mkdir_if_not_exists(p):
+    if not osp.exists(p):
+        os.makedirs(p)
+
+
+def list_by_ext(path, ext):
+    if type(ext) is str:
+        return glob(osp.join(path, f'*{ext}'))
+    paths = []
+    for _ext in ext:
+        paths += glob(osp.join(path, f'*{_ext}'))
+    return paths
+
+
 def icon_path(icon):
     if hasattr(sys, '_MEIPASS'):
         return osp.join(sys._MEIPASS,
-                        'PointMatcher',
+                        'labelMatch',
                         'package_data',
                         'icons',
                         '{}.png'.format(icon))

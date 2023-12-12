@@ -1,4 +1,6 @@
 from .filesystem import icon_path
+from .filesystem import list_by_ext
+from .filesystem import mkdir_if_not_exists
 from .filesystem import scan_all_images
 from .qt import new_action
 from .qt import new_button
