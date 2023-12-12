@@ -23,17 +23,32 @@ cd labelMatch
 
 # I like virtualenv
 python3 -m venv .venv
+## Linux
 source .venv/bin/activate
+## Windows
+.\.venv\Scripts\activate
 
 python -m pip install --upgrade pip
-pip install numpy \
-            loguru \
+# Linux
+pip install loguru \
+            numpy \
             opencv-python-headless \
             tqdm \
             PyQt5 \
             PyQt5-stubs
+# Windows
+pip install loguru `
+            numpy `
+            opencv-python-headless `
+            tqdm `
+            PyQt5 `
+            PyQt5-stubs
 
+# Linux
 export PYTHONPATH="."
+# Windows
+set PYTHONPATH="."
+
 python labelMatch/__main__.py
 ```
 
