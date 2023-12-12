@@ -48,6 +48,9 @@ class Canvas(QWidget):
         self.setFocusPolicy(Qt.WheelFocus)
 
     def mouseMoveEvent(self, ev):
+        if self.pixmap is None:
+            return
+
         pos = self.transform_pos(ev.pos())
         pos_in_view_i = self.get_pos_in_view_i(pos.x(), pos.y())
         pos_in_view_j = self.get_pos_in_view_j(pos.x(), pos.y())
@@ -107,6 +110,9 @@ class Canvas(QWidget):
         self.update()
 
     def mousePressEvent(self, ev):
+        if self.pixmap is None:
+            return
+
         pos = self.transform_pos(ev.pos())
         pos_in_view_i = self.get_pos_in_view_i(pos.x(), pos.y())
         pos_in_view_j = self.get_pos_in_view_j(pos.x(), pos.y())
@@ -173,6 +179,8 @@ class Canvas(QWidget):
         self.update()
 
     def mouseReleaseEvent(self, ev):
+        if self.pixmap is None:
+            return
         if self.mw.matching is None:
             return
 
@@ -185,6 +193,9 @@ class Canvas(QWidget):
         self.update()
 
     def mouseDoubleClickEvent(self, ev):
+        if self.pixmap is None:
+            return
+        
         pos = self.transform_pos(ev.pos())
         pos_in_view_i = self.get_pos_in_view_i(pos.x(), pos.y())
         pos_in_view_j = self.get_pos_in_view_j(pos.x(), pos.y())
@@ -214,7 +225,7 @@ class Canvas(QWidget):
         self.update()
 
     def paintEvent(self, event):
-        if not self.pixmap:
+        if self.pixmap is None:
             return super(Canvas, self).paintEvent(event)
 
         p = self._painter
@@ -239,6 +250,9 @@ class Canvas(QWidget):
         p.end()
 
     def wheelEvent(self, ev):
+        if self.pixmap is None:
+            return
+
         qt_version = 4 if hasattr(ev, 'delta') else 5
         if qt_version == 4:
             if ev.orientation() == Qt.Vertical:
@@ -291,6 +305,9 @@ class Canvas(QWidget):
             if 0 <= x <= self.img_j_w and self.img_i_h <= y < self.img_i_h + self.img_j_h:
                 return x, y - self.img_i_h
         return None
+
+    def clear_pixmap(self):
+        self.pixmap = None
 
     def update_pixmap(self):
         img_i = cv2.imread(osp.join(self.mw.image_dir, self.mw.matching.get_filename(self.mw.matching.get_view_id_i())))

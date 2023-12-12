@@ -35,8 +35,11 @@ class ViewIWidget(QDockWidget):
     def set_current_idx(self, idx):
         self.viewlist_widget.setCurrentRow(idx)
 
-    def initialize(self):
+    def clear(self):
         self.viewlist_widget.clear()
+
+    def initialize(self):
+        self.clear()
         list_of_view_id = self.mw.matching.get_list_of_view_id()
         for view_id in list_of_view_id:
             self.viewlist_widget.addItem(self.item_text(view_id))

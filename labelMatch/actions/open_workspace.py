@@ -5,6 +5,7 @@ from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 from PyQt5.QtWidgets import *
 from PyQt5.QtWidgets import QMessageBox as QMB
+from labelMatch import __appname__
 from labelMatch.defines import *
 from labelMatch.utils import *
 
@@ -59,14 +60,12 @@ class OpenWorkspaceDialog(QDialog):
         vlayout.addWidget(self.bb)
 
         self.setLayout(vlayout)
+        self.setWindowTitle('{} - Open Workspace'.format(__appname__))
 
     def pop_open_annot_dir(self):
         default_annot_dir = '.'
         if osp.exists(self.ledit_annot_dir.text()):
             default_annot_dir = self.ledit_annot_dir.text()
-        elif (self.mw.annot_dir is not None) and \
-             osp.exists(self.mw.annot_dir):
-            default_annot_dir = self.mw.annot_dir
         new_annot_dir = \
             QFD.getExistingDirectory(
                 self, 'New Annotation Directory',
@@ -86,6 +85,12 @@ class OpenWorkspaceDialog(QDialog):
         self.ledit_image_dir.setText(new_image_dir)
 
     def popup(self):
+        if (self.mw.annot_dir is not None) and \
+             osp.exists(self.mw.annot_dir):
+            self.ledit_annot_dir.setText(self.mw.annot_dir)
+        if (self.mw.image_dir is not None) and \
+             osp.exists(self.mw.image_dir):
+            self.ledit_image_dir.setText(self.mw.image_dir)        
         if not self.exec_():
             return False
         if self.checkbox_new_annot_dir.isChecked():

@@ -1,5 +1,5 @@
 from labelMatch.actions.auto_save          import AutoSaveAction
-from labelMatch.actions.close              import CloseAction
+from labelMatch.actions.close_workspace    import CloseWorkspaceAction
 from labelMatch.actions.edit_keypoint_mode import EditKeypointModeAction
 from labelMatch.actions.edit_match_mode    import EditMatchModeAction
 from labelMatch.actions.export             import ExportAction

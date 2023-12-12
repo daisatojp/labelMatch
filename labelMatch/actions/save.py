@@ -18,4 +18,4 @@ class SaveAction(QAction):
 
     def save(self, _value=False):
         self.mw.matching.save()
-        self.mw.actions.save.setEnabled(False)
+        self.mw.save_action.setEnabled(False)

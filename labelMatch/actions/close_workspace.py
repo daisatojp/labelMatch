@@ -4,10 +4,10 @@ from PyQt5.QtWidgets import *
 from labelMatch.utils import *
 
 
-class CloseAction(QAction):
+class CloseWorkspaceAction(QAction):
 
     def __init__(self, parent):
-        super(CloseAction, self).__init__('Close', parent)
+        super(CloseWorkspaceAction, self).__init__('Close Workspace', parent)
         self.p = parent  # MainWindow
         self.mw = self.p  # MainWindow
 
@@ -19,3 +19,4 @@ class CloseAction(QAction):
     def close(self, _value=False):
         if not self.mw.may_continue():
             return
+        self.mw.close_workspace()

@@ -45,7 +45,7 @@ class MainWindow(QMainWindow):
 
         self.save_action = SaveAction(self)
         self.export_action = ExportAction(self)
-        self.close_action = CloseAction(self)
+        self.close_workspace_action = CloseWorkspaceAction(self)
         self.quit_app_action = QuitAppAction(self)
         self.open_workspace_action = OpenWorkspaceAction(self)
         self.open_next_view_action = OpenNextViewAction(self)
@@ -64,7 +64,7 @@ class MainWindow(QMainWindow):
         self.menus.file.addAction(self.open_workspace_action)
         self.menus.file.addAction(self.save_action)
         self.menus.file.addAction(self.export_action)
-        self.menus.file.addAction(self.close_action)
+        self.menus.file.addAction(self.close_workspace_action)
         self.menus.file.addAction(self.quit_app_action)
         self.menus.edit.addAction(self.edit_keypoint_mode_action)
         self.menus.edit.addAction(self.edit_match_mode_action)
@@ -83,6 +83,7 @@ class MainWindow(QMainWindow):
         self.toolbar.addAction(self.open_workspace_action)
         self.toolbar.addAction(self.save_action)
         self.toolbar.addAction(self.export_action)
+        self.toolbar.addAction(self.close_workspace_action)
         self.toolbar.addSeparator()
         self.toolbar.addAction(self.open_next_view_action)
         self.toolbar.addAction(self.open_prev_view_action)
@@ -102,15 +103,18 @@ class MainWindow(QMainWindow):
         saved_position = QPoint(0, 0)
         # Fix the multiple monitors issue
         for i in range(QApplication.desktop().screenCount()):
-            if QApplication.desktop().availableGeometry(i).contains(saved_position):
+            if QApplication.desktop() \
+                           .availableGeometry(i) \
+                           .contains(saved_position):
                 position = saved_position
                 break
         self.resize(size)
         self.move(position)
 
-        self.update_title()
         self.labelCoordinates = QLabel('')
         self.statusBar().addPermanentWidget(self.labelCoordinates)
+
+        self.update_title()
 
     def resizeEvent(self, event):
         super(MainWindow, self).resizeEvent(event)
@@ -145,6 +149,15 @@ class MainWindow(QMainWindow):
         view_id_j = self.matching.get_list_of_view_id()[1]
         self.change_pair(view_id_i, view_id_j)
         self.export_action.setEnabled(True)
+        self.update_title()
+
+    def close_workspace(self):
+        self.matching = None
+        self.view_i_widget.clear()
+        self.view_j_widget.clear()
+        self.canvas.clear_pixmap()
+        self.canvas.repaint()
+        self.update_title()
 
     def viewitem_clicked(self, item=None):
         view_id_i = self.matching.get_list_of_view_id()[self.view_i_widget.get_current_idx()]
@@ -174,7 +187,8 @@ class MainWindow(QMainWindow):
         self.save_action.setEnabled(True)
 
     def update_title(self):
-        if (self.annot_dir is not None) and \
+        if (self.matching is not None) and \
+           (self.annot_dir is not None) and \
            (self.image_dir is not None):
             title = '{} (wrk={}, img={})'.format(
                 __appname__, self.annot_dir, self.image_dir)
