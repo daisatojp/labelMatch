@@ -148,8 +148,8 @@ class MainWindow(QMainWindow):
         view_id_j = self.matching.get_list_of_view_id()[1]
         self.change_pair(view_id_i, view_id_j)
         self.export_action.setEnabled(True)
-        self.update_title()
         self.zoom_widget.enable_actions()
+        self.update_title()
 
     def close_workspace(self):
         self.matching = None
@@ -157,8 +157,9 @@ class MainWindow(QMainWindow):
         self.view_j_widget.clear()
         self.canvas.clear_pixmap()
         self.canvas.repaint()
-        self.update_title()
+        self.export_action.setEnabled(False)
         self.zoom_widget.disable_actions()
+        self.update_title()
 
     def viewitem_clicked(self, item=None):
         view_id_i = self.matching.get_list_of_view_id()[self.view_i_widget.get_current_idx()]

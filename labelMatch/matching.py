@@ -493,6 +493,9 @@ class Matching:
                     vid_j = gks[j][0]
                     kid_i = gks[i][1]
                     kid_j = gks[j][1]
+                    if (vid_i not in self._viewlist) or \
+                       (vid_j not in self._viewlist):
+                        continue
                     kidx_i = self.find_keypoint_idx(self.get_keypoints(vid_i), kid_i)
                     kidx_j = self.find_keypoint_idx(self.get_keypoints(vid_j), kid_j)
                     if (vid_i, vid_j) in pair_dict:

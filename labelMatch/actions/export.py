@@ -20,19 +20,20 @@ class ExportAction(QAction):
         self.setEnabled(False)
 
     def export(self, _value=False):
-        if (self.mw.annot_dir is not None) and osp.exists(self.mw.annot_dir):
-            default_dir = self.mw.annot_dir
-        elif (self.mw.image_dir is not None) and osp.exists(self.mw.image_dir):
-            default_dir = self.mw.image_dir
-        else:
-            default_dir = '.'
-        default_dir = self.mw.settings.get('export_path', default_dir)
+        default_dir = '.'
+        export_file = self.mw.settings.get('export_file', default_dir)
+        if export_file is not None:
+            export_dir = osp.dirname(export_file)
+            if osp.exists(export_dir):
+                default_dir = export_dir
         filters = 'json file (*.json)'
         filename = QFD.getSaveFileName(
-            self.p, 'choose file name to be exported', default_dir, filters,
+            self.p,
+            'choose file name to be exported',
+            default_dir, filters,
             options=QFD.DontUseNativeDialog)
         if filename:
             if isinstance(filename, (tuple, list)):
                 filename = filename[0]
             self.mw.matching.export(filename)
-            self.mw.settings['export_path'] = osp.dirname(filename)
+            self.mw.settings['export_file'] = filename
