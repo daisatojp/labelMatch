@@ -93,6 +93,13 @@ You can export annotated data to one json file in the following format.
 
 [MIT license](LICENSE)
 
+## Make executable for Windows
+
+```
+pip install pyinstaller
+pyinstaller labelMatch.spec
+```
+
 ## Acknowledgment
 
 * [labelImg](https://github.com/tzutalin/labelImg) as a reference
