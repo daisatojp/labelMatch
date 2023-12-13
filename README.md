@@ -2,7 +2,7 @@
 
  labelMatch is a graphical corresponding point annotation tool. In computer vision, normally we decide correspondences of points automatically by a feature point extraction algorithm (e.g. SIFT) and a feature matching algorithm (e.g. Brute Force). But when you want to do it manually, you can use this tool!
 
-<p align="center"><img src="demo/main_window.jpg" alt="demo image" width="460"></img></p>
+<p align="center"><img src="demo/mainwindow.png" alt="demo image" width="460"></img></p>
 
 ## Requirements
 
