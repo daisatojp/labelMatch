@@ -19,4 +19,4 @@ class ScrollWidget(QScrollArea):
     def scroll_request(self, delta, orientation):
         units = - delta / (8 * 15)
         bar = self.scrollbars[orientation]
-        bar.setValue(bar.value() + bar.singleStep() * units)
+        bar.setValue(int(bar.value() + bar.singleStep() * units))
