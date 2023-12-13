@@ -85,12 +85,12 @@ class MatchingPainter:
             color = self.match_line_colors[idx % len(self.match_line_colors)]
             if kid_i == matching.selected_id_i or kid_j == matching.selected_id_j:
                 pen = QPen(QColor(color[0], color[1], color[2], self.match_selected_line_alpha))
-                pen.setWidth(self.match_highlighted_line_width / scale)
+                pen.setWidth(int(self.match_highlighted_line_width / scale))
             elif kid_i == matching.highlighted_id_i or kid_j == matching.highlighted_id_j:
                 pen = QPen(QColor(color[0], color[1], color[2], self.match_highlighted_line_alpha))
-                pen.setWidth(self.match_selected_line_width / scale)
+                pen.setWidth(int(self.match_selected_line_width / scale))
             else:
                 pen = QPen(QColor(color[0], color[1], color[2], self.match_line_alpha))
-                pen.setWidth(self.match_line_width / scale)
+                pen.setWidth(int(self.match_line_width / scale))
             painter.setPen(pen)
             painter.drawPath(match_path)

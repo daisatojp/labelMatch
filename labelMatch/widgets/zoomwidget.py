@@ -70,7 +70,7 @@ class ZoomWidget:
         return QSize(width, height)
 
     def set_zoom(self, value):
-        self.spinbox.setValue(value)
+        self.spinbox.setValue(int(value))
 
     def add_zoom(self, increment=10):
         self.set_zoom(self.spinbox.value() + increment)
@@ -130,5 +130,5 @@ class ZoomWidget:
         # get the new scrollbar values
         new_h_bar_value = h_bar.value() + move_x * d_h_bar_max
         new_v_bar_value = v_bar.value() + move_y * d_v_bar_max
-        h_bar.setValue(new_h_bar_value)
-        v_bar.setValue(new_v_bar_value)
+        h_bar.setValue(int(new_h_bar_value))
+        v_bar.setValue(int(new_v_bar_value))
