@@ -128,19 +128,19 @@ class OpenWorkspaceAction(QAction):
 
         self.setIcon(QIcon(icon_path('open')))
         self.setShortcut('Ctrl+N')
-        self.triggered.connect(self.open_workspace)
+        self.triggered.connect(self.exec)
         self.setEnabled(True)
 
-        self.open_workspace_dialog = OpenWorkspaceDialog(self.mw)
+        self.dialog = OpenWorkspaceDialog(self.mw)
 
-    def open_workspace(self, _value=False):
+    def exec(self, _value=False):
         if not self.mw.may_continue():
             return
 
-        if not self.open_workspace_dialog.popup():
+        if not self.dialog.popup():
             return
 
-        self.mw.annot_dir = self.open_workspace_dialog.ledit_annot_dir.text()
-        self.mw.image_dir = self.open_workspace_dialog.ledit_image_dir.text()
+        self.mw.annot_dir = osp.realpath(self.dialog.ledit_annot_dir.text())
+        self.mw.image_dir = osp.realpath(self.dialog.ledit_image_dir.text())
 
         self.mw.open_workspace()
