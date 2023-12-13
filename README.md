@@ -52,9 +52,15 @@ $Env:PYTHONPATH = "."
 python labelMatch/__main__.py
 ```
 
-### Tutorial
+## Tutorial
 
-see [TUTORIAL.md](TUTORIAL.md).
+* Click `Open Workspace`.
+  - Select annotation directory where in you save annotation files. If you create new annotation directory, then check `Create new annotation directory`.
+  - Select image directory where in images are located.
+  - Click `OK`
+* Select `Edit` > `Edit Keypoint` or just press `v`. You can create a keypoint by clicking images. You can delete a keypoint by double clicking it.
+* Select `Edit` > `Edit Match` or just press `m`. You can match two keypoints of each two images by clicking the two keypoints in order. You can delete a match by double clicking a keypoint which is connected to the match.
+* You can save annotation file by pushing Save File button or select `File` > `Save File`. If you want to save automatically, select `View` > `Auto Save Mode`.
 
 ## Annotation format
 
