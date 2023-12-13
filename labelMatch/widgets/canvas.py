@@ -57,19 +57,25 @@ class Canvas(QWidget):
 
         if pos_in_view_i is not None:
             self.parent().window().labelCoordinates.setText(
-                f'(View I) X: {pos_in_view_i[0]:0.1f}; Y: {pos_in_view_i[1]:0.1f}')
+                '(View I) X: {:0.1f}; Y: {:0.1f}'
+                .format(pos_in_view_i[0], pos_in_view_i[1]))
         if pos_in_view_j is not None:
             self.parent().window().labelCoordinates.setText(
-                f'(View J) X: {pos_in_view_j[0]:0.1f}; Y: {pos_in_view_j[1]:0.1f}')
+                '(View J) X: {:0.1f}; Y: {:0.1f}'
+                .format(pos_in_view_j[0], pos_in_view_j[1]))
 
         if self.mode == self.MODE_EDIT_KEYPOINT:
             if Qt.LeftButton & ev.buttons():
-                if (pos_in_view_i is not None) and (self.mw.matching.selected_id_i is not None):
+                if (pos_in_view_i is not None) and \
+                   (self.mw.matching.selected_id_i is not None):
                     self.mw.matching.set_keypoint_pos_in_view_i(
-                        self.mw.matching.selected_id_i, pos_in_view_i[0], pos_in_view_i[1])
-                if (pos_in_view_j is not None) and (self.mw.matching.selected_id_j is not None):
+                        self.mw.matching.selected_id_i,
+                        pos_in_view_i[0], pos_in_view_i[1])
+                if (pos_in_view_j is not None) and \
+                   (self.mw.matching.selected_id_j is not None):
                     self.mw.matching.set_keypoint_pos_in_view_j(
-                        self.mw.matching.selected_id_j, pos_in_view_j[0], pos_in_view_j[1])
+                        self.mw.matching.selected_id_j,
+                        pos_in_view_j[0], pos_in_view_j[1])
             else:
                 if pos_in_view_i is not None:
                     self.mw.matching.highlighted_id_j = None
@@ -293,6 +299,13 @@ class Canvas(QWidget):
         self.mode = self.MODE_EDIT_MATCH
         if self.mw.matching:
             self.mw.matching.clear_decoration()
+
+    def edit_mode_to_str(self):
+        if self.mode == self.MODE_EDIT_KEYPOINT:
+            return 'Edit Keypoint'
+        if self.mode == self.MODE_EDIT_MATCH:
+            return 'Edit Match'
+        return ''
 
     def get_pos_in_view_i(self, x, y):
         if all([self.img_i_w, self.img_i_h, self.img_j_w, self.img_j_h]):

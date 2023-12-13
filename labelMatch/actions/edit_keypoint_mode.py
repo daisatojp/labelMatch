@@ -20,3 +20,4 @@ class EditKeypointModeAction(QAction):
         self.mw.edit_keypoint_mode_action.setChecked(True)
         self.mw.edit_match_mode_action.setChecked(False)
         self.mw.canvas.set_edit_keypoint_mode()
+        self.mw.update_status_message()

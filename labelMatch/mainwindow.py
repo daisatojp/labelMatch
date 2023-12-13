@@ -200,28 +200,36 @@ class MainWindow(QMainWindow):
         self.setWindowTitle(title)
 
     def update_status_message(self):
-        if self.matching is not None:
-            vid = None
-            kid = None
-            if self.matching.highlighted_id_i is not None:
-                vid = self.matching.get_view_id_i()
-                kid = self.matching.highlighted_id_i
-            elif self.matching.highlighted_id_j is not None:
-                vid = self.matching.get_view_id_j()
-                kid = self.matching.highlighted_id_j
-            elif self.matching.selected_id_i is not None:
-                vid = self.matching.get_view_id_i()
-                kid = self.matching.selected_id_i
-            elif self.matching.selected_id_j is not None:
-                vid = self.matching.get_view_id_j()
-                kid = self.matching.selected_id_j
-            if vid is not None and kid is not None:
-                keypoint = self.matching.get_keypoint(vid, kid)
-                self.statusBar().showMessage(
-                    'view_id={}, keypoint_id={}, group_id={}, x={:0.1f}, y={:0.1f}'.format(
-                        vid, kid, keypoint['group_id'], keypoint['pos'][0], keypoint['pos'][1]))
-                return
-        self.statusBar().showMessage('')
+        if self.matching is None:
+            self.statusBar().showMessage('')
+            return
+        vid = None
+        kid = None
+        if self.matching.highlighted_id_i is not None:
+            vid = self.matching.get_view_id_i()
+            kid = self.matching.highlighted_id_i
+        elif self.matching.highlighted_id_j is not None:
+            vid = self.matching.get_view_id_j()
+            kid = self.matching.highlighted_id_j
+        elif self.matching.selected_id_i is not None:
+            vid = self.matching.get_view_id_i()
+            kid = self.matching.selected_id_i
+        elif self.matching.selected_id_j is not None:
+            vid = self.matching.get_view_id_j()
+            kid = self.matching.selected_id_j
+        if (vid is not None) and (kid is not None):
+            keypoint = self.matching.get_keypoint(vid, kid)
+            self.statusBar().showMessage(
+                '[{}] view_id={}, keypoint_id={}, group_id={}, x={:0.1f}, y={:0.1f}'
+                .format(self.canvas.edit_mode_to_str(),
+                        vid, kid,
+                        keypoint['group_id'],
+                        keypoint['pos'][0],
+                        keypoint['pos'][1]))
+        else:
+            self.statusBar().showMessage(
+                '[{}]'
+                .format(self.canvas.edit_mode_to_str()))
 
     def may_continue(self):
         msg = 'You have unsaved changes, would you like to save them and proceed?'

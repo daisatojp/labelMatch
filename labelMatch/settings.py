@@ -13,7 +13,8 @@ class Settings(object):
             with open(SETTINGS_FILE, 'w') as f:
                 json.dump({
                     'annot_dir': None,
-                    'image_dir': None
+                    'image_dir': None,
+                    'export_file': None
                 }, f, indent=4)
         self.load()
 

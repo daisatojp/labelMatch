@@ -20,3 +20,4 @@ class EditMatchModeAction(QAction):
         self.mw.edit_keypoint_mode_action.setChecked(False)
         self.mw.edit_match_mode_action.setChecked(True)
         self.mw.canvas.set_edit_match_mode()
+        self.mw.update_status_message()
