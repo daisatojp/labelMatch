@@ -36,7 +36,7 @@ class Matching:
             self._groups = json.load(f)
         self.update_group_id_to_idx()
 
-        view_ids = []
+        view_ids = [-1]
         view_image_files = []
         view_dir = osp.join(self.annot_dir, 'views')
         view_files = list_by_ext(view_dir, '.json')

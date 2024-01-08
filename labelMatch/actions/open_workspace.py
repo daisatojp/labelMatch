@@ -25,9 +25,6 @@ class OpenWorkspaceDialog(QDialog):
         button_annot_dir = QPushButton(QIcon(icon_path('open')), 'open', self)
         button_annot_dir.clicked.connect(self.pop_open_annot_dir)
 
-        label_new_annot_dir = QLabel('Create new annotation directory')
-        self.checkbox_new_annot_dir = QCheckBox()
-
         label_image_dir = QLabel('Image directory')
         self.ledit_image_dir = QLineEdit()
         button_image_dir = QPushButton(QIcon(icon_path('open')), 'open', self)
@@ -45,18 +42,13 @@ class OpenWorkspaceDialog(QDialog):
         hlayout1.addWidget(button_annot_dir)
 
         hlayout2 = QHBoxLayout()
-        hlayout2.addWidget(label_new_annot_dir)
-        hlayout2.addWidget(self.checkbox_new_annot_dir)
-
-        hlayout3 = QHBoxLayout()
-        hlayout3.addWidget(label_image_dir)
-        hlayout3.addWidget(self.ledit_image_dir)
-        hlayout3.addWidget(button_image_dir)
+        hlayout2.addWidget(label_image_dir)
+        hlayout2.addWidget(self.ledit_image_dir)
+        hlayout2.addWidget(button_image_dir)
 
         vlayout = QVBoxLayout()
         vlayout.addLayout(hlayout1)
         vlayout.addLayout(hlayout2)
-        vlayout.addLayout(hlayout3)
         vlayout.addWidget(self.bb)
 
         self.setLayout(vlayout)
@@ -91,20 +83,14 @@ class OpenWorkspaceDialog(QDialog):
         if (self.mw.image_dir is not None) and \
              osp.exists(self.mw.image_dir):
             self.ledit_image_dir.setText(self.mw.image_dir)
-        self.checkbox_new_annot_dir.setChecked(False)
         if not self.exec_():
             return False
-        if self.checkbox_new_annot_dir.isChecked():
-            new_annot_dir = self.ledit_annot_dir.text()
-            if osp.exists(new_annot_dir):
-                QMB.warning(None, 'Warning',
-                            '{} have already existed.'
-                            .format(new_annot_dir),
-                            QMB.Ok)
-                return False
-            views_dir = osp.join(new_annot_dir, 'views')
-            mkdir_if_not_exists(views_dir)
-            with open(osp.join(new_annot_dir, 'groups.json'), 'w') as f:
+        annot_dir = self.ledit_annot_dir.text()
+        views_dir = osp.join(annot_dir, 'views')
+        mkdir_if_not_exists(views_dir)
+        groups_file = osp.join(annot_dir, 'groups.json')
+        if not osp.exists(groups_file):
+            with open(groups_file, 'w') as f:
                 json.dump({'groups': []}, f, indent=4)
         if not osp.exists(self.ledit_annot_dir.text()):
             QMB.warning(None, 'Warning',
