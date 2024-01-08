@@ -55,7 +55,7 @@ python labelMatch/__main__.py
 ## Tutorial
 
 * Click `Open Workspace`.
-  - Select annotation directory where in you save annotation files. If you create new annotation directory, then check `Create new annotation directory`.
+  - Select annotation directory where in you save annotation files.
   - Select image directory where in images are located.
   - Click `OK`
 * Select `Edit` > `Edit Keypoint` or just press `v`. You can create a keypoint by clicking images. You can delete a keypoint by double clicking it.
